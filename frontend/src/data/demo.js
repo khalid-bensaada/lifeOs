@@ -1,4 +1,4 @@
-import { daysAgo } from "../utils/dates";
+import { daysAgo, startOfWeek, addDays } from "../utils/dates";
 
 export const demoTasks = [
   {
@@ -290,5 +290,30 @@ export const demoSkills = [
       ["Create a product animation", false],
       ["Create a complete commercial", false],
     ]),
+  },
+];
+
+export const demoReviews = [
+  {
+    id: "r1",
+    weekStart: addDays(startOfWeek(daysAgo(0)), -7),
+    savedAt: addDays(startOfWeek(daysAgo(0)), -1),
+    stats: {
+      score: 62,
+      focus: 40800,
+      learning: 36000,
+      tasksDone: 5,
+      tasksTotal: 8,
+      habits: 64,
+      workouts: 2,
+    },
+    answers: {
+      wentWell: "I coded every day and finished the JavaScript exercises.",
+      wentBad: "I skipped the gym twice and slept late.",
+      wasted: "Too much YouTube after dinner.",
+      learned: "Short sessions every day work better than one long session.",
+      change: "Start programming before 21:00.",
+    },
+    priorities: ["Finish authentication", "Study SQL joins", "Gym three times"],
   },
 ];

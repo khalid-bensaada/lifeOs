@@ -16,16 +16,31 @@ const CATEGORIES = [
   "Other",
 ];
 
+function useAction() {
+  const [error, setError] = useState("");
+  const run = async (fn) => {
+    setError("");
+    try {
+      await fn();
+      return true;
+    } catch (err) {
+      setError(err.message);
+      return false;
+    }
+  };
+  return [error, run];
+}
+
 function GoalCard({ g }) {
   const { removeGoal, addMilestone, toggleMilestone } = useApp();
   const [ms, setMs] = useState("");
+  const [error, run] = useAction();
   const p = goalProgress(g);
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!ms.trim()) return;
-    addMilestone(g.id, ms.trim());
-    setMs("");
+    if (await run(() => addMilestone(g.id, ms.trim()))) setMs("");
   };
 
   return (
@@ -39,7 +54,7 @@ function GoalCard({ g }) {
           </p>
         </div>
         <button
-          onClick={() => removeGoal(g.id)}
+          onClick={() => run(() => removeGoal(g.id))}
           aria-label={`Delete ${g.title}`}
           className="text-muted hover:text-ink"
         >
@@ -59,7 +74,7 @@ function GoalCard({ g }) {
               <input
                 type="checkbox"
                 checked={m.done}
-                onChange={() => toggleMilestone(g.id, m.id)}
+                onChange={() => run(() => toggleMilestone(g.id, m.id))}
                 className="size-4 accent-[var(--accent)]"
               />
               <span className={m.done ? "text-muted line-through" : ""}>
@@ -80,22 +95,33 @@ function GoalCard({ g }) {
         />
         <button className={btnCls}>Add</button>
       </form>
+
+      {error && (
+        <p role="alert" className="text-sm text-accent">
+          {error}
+        </p>
+      )}
     </Card>
   );
 }
 
 export default function Goals() {
-  const { goals, addGoal } = useApp();
+  const { goals, goalsStatus, loadGoals, addGoal } = useApp();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Programming");
   const [deadline, setDeadline] = useState("");
+  const [error, run] = useAction();
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    addGoal({ title: title.trim(), category, deadline });
-    setTitle("");
-    setDeadline("");
+    const ok = await run(() =>
+      addGoal({ title: title.trim(), category, deadline }),
+    );
+    if (ok) {
+      setTitle("");
+      setDeadline("");
+    }
   };
 
   return (
@@ -138,18 +164,45 @@ export default function Goals() {
         </button>
       </form>
 
-      {goals.length === 0 ? (
-        <Empty
-          title="No goals yet"
-          text="What do you want to achieve? Create your first goal above."
-        />
-      ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {goals.map((g) => (
-            <GoalCard key={g.id} g={g} />
+      {error && (
+        <p role="alert" className="text-sm text-accent">
+          {error}
+        </p>
+      )}
+
+      {goalsStatus === "loading" && (
+        <div aria-busy="true" className="grid gap-5 lg:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-44 animate-pulse rounded-xl bg-line/60" />
           ))}
         </div>
       )}
+
+      {goalsStatus === "error" && (
+        <div className="rounded-xl border border-dashed border-line p-10 text-center">
+          <p className="font-medium">Something went wrong.</p>
+          <p className="mt-1 text-sm text-muted">
+            We couldn&apos;t load your goals.
+          </p>
+          <button onClick={loadGoals} className={`${btnCls} mt-4`}>
+            Try again
+          </button>
+        </div>
+      )}
+
+      {goalsStatus === "ready" &&
+        (goals.length === 0 ? (
+          <Empty
+            title="No goals yet"
+            text="What do you want to achieve? Create your first goal above."
+          />
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-2">
+            {goals.map((g) => (
+              <GoalCard key={g.id} g={g} />
+            ))}
+          </div>
+        ))}
     </div>
   );
 }

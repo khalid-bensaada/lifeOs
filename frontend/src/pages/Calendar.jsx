@@ -39,7 +39,16 @@ const longDate = (iso) =>
   });
 
 export default function Calendar() {
-  const { tasks, goals, habits, events, addEvent, removeEvent } = useApp();
+  const {
+    tasks,
+    goals,
+    habits,
+    events,
+    eventsStatus,
+    loadEvents,
+    addEvent,
+    removeEvent,
+  } = useApp();
   const today = todayISO();
   const [view, setView] = useState("month");
   const [cursor, setCursor] = useState(today);
@@ -93,13 +102,20 @@ export default function Calendar() {
     setSelected(today);
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    addEvent({ title: title.trim(), date: selected, start, end });
-    setTitle("");
-    setStart("");
-    setEnd("");
+    const ok = await addEvent({
+      title: title.trim(),
+      date: selected,
+      start,
+      end,
+    });
+    if (ok) {
+      setTitle("");
+      setStart("");
+      setEnd("");
+    }
   };
 
   const label =
@@ -135,7 +151,17 @@ export default function Calendar() {
           ))}
         </p>
       </header>
-
+      {eventsStatus === "error" && (
+        <div
+          role="alert"
+          className="flex items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm"
+        >
+          <span>We couldn&apos;t load your events.</span>
+          <button onClick={loadEvents} className="text-accent hover:underline">
+            Try again
+          </button>
+        </div>
+      )}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button

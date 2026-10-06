@@ -27,18 +27,18 @@ function ProjectCard({ p }) {
   const [title, setTitle] = useState("");
   const mine = tasks.filter((t) => t.projectId === p.id);
   const done = mine.filter((t) => t.status === "completed").length;
-  const goal = goals.find((g) => g.id === p.goalId);
+  const goal = goals.find((g) => String(g.id) === String(p.goalId));
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    addTask({
+    const ok = await addTask({
       title: title.trim(),
       priority: "medium",
       est: 30,
       projectId: p.id,
     });
-    setTitle("");
+    if (ok) setTitle("");
   };
 
   return (
@@ -129,20 +129,28 @@ function ProjectCard({ p }) {
 }
 
 export default function Projects() {
-  const { projects, goals, addProject } = useApp();
+  const { projects, projectsStatus, loadProjects, goals, addProject } =
+    useApp();
   const [title, setTitle] = useState("");
   const [tech, setTech] = useState("");
   const [goalId, setGoalId] = useState("");
   const [deadline, setDeadline] = useState("");
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    addProject({ title: title.trim(), tech: tech.trim(), goalId, deadline });
-    setTitle("");
-    setTech("");
-    setGoalId("");
-    setDeadline("");
+    const ok = await addProject({
+      title: title.trim(),
+      tech: tech.trim(),
+      goalId,
+      deadline,
+    });
+    if (ok) {
+      setTitle("");
+      setTech("");
+      setGoalId("");
+      setDeadline("");
+    }
   };
 
   return (
@@ -196,30 +204,55 @@ export default function Projects() {
         </button>
       </form>
 
-      <div className="flex items-start gap-4 overflow-x-auto pb-3">
-        {Object.entries(STATUS).map(([key, label]) => {
-          const list = projects.filter((p) => p.status === key);
-          return (
-            <section
-              key={key}
-              aria-label={label}
-              className="w-72 shrink-0 space-y-3"
-            >
-              <h2 className="flex items-center justify-between px-1 text-sm font-semibold">
-                {label}
-                <span className="font-normal text-muted">{list.length}</span>
-              </h2>
-              {list.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-line p-4 text-center text-xs text-muted">
-                  No projects
-                </p>
-              ) : (
-                list.map((p) => <ProjectCard key={p.id} p={p} />)
-              )}
-            </section>
-          );
-        })}
-      </div>
+      {projectsStatus === "loading" && (
+        <div aria-busy="true" className="flex gap-4 overflow-hidden">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="h-48 w-72 shrink-0 animate-pulse rounded-xl bg-line/60"
+            />
+          ))}
+        </div>
+      )}
+
+      {projectsStatus === "error" && (
+        <div className="rounded-xl border border-dashed border-line p-10 text-center">
+          <p className="font-medium">Something went wrong.</p>
+          <p className="mt-1 text-sm text-muted">
+            We couldn&apos;t load your projects.
+          </p>
+          <button onClick={loadProjects} className={`${btnCls} mt-4`}>
+            Try again
+          </button>
+        </div>
+      )}
+
+      {projectsStatus === "ready" && (
+        <div className="flex items-start gap-4 overflow-x-auto pb-3">
+          {Object.entries(STATUS).map(([key, label]) => {
+            const list = projects.filter((p) => p.status === key);
+            return (
+              <section
+                key={key}
+                aria-label={label}
+                className="w-72 shrink-0 space-y-3"
+              >
+                <h2 className="flex items-center justify-between px-1 text-sm font-semibold">
+                  {label}
+                  <span className="font-normal text-muted">{list.length}</span>
+                </h2>
+                {list.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-line p-4 text-center text-xs text-muted">
+                    No projects
+                  </p>
+                ) : (
+                  list.map((p) => <ProjectCard key={p.id} p={p} />)
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

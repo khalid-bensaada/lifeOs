@@ -26,11 +26,12 @@ const RANGES = [
 ];
 
 function Timer() {
-  const { active, startTimer, stopTimer } = useApp();
+  const { active, projects, startTimer, stopTimer } = useApp();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Programming");
-  const [project, setProject] = useState("");
+  const [projectId, setProjectId] = useState("");
   const [now, setNow] = useState(Date.now());
+  const [stopping, setStopping] = useState(false);
 
   useEffect(() => {
     if (!active) return;
@@ -44,30 +45,41 @@ function Timer() {
     startTimer({
       title: title.trim() || category,
       category,
-      project: project.trim(),
+      projectId: projectId ? Number(projectId) : null,
     });
     setTitle("");
-    setProject("");
+    setProjectId("");
+  };
+
+  const stop = async () => {
+    setStopping(true);
+    await stopTimer();
+    setStopping(false);
   };
 
   if (active) {
     const elapsed = Math.max(0, Math.floor((now - active.startedAt) / 1000));
+    const project = projects.find((p) => p.id === active.projectId);
     return (
       <Card className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="font-semibold">{active.title}</p>
           <p className="mt-1 flex gap-2">
             <Badge>{active.category}</Badge>
-            {active.project && <Badge>{active.project}</Badge>}
+            {project && <Badge>{project.title}</Badge>}
           </p>
         </div>
         <div className="flex items-center gap-4">
           <span className="text-3xl font-semibold tabular-nums" aria-live="off">
             {clock(elapsed)}
           </span>
-          <button onClick={stopTimer} className={btnCls}>
+          <button
+            onClick={stop}
+            disabled={stopping}
+            className={`${btnCls} disabled:opacity-60`}
+          >
             <Square size={16} aria-hidden="true" />
-            Stop
+            {stopping ? "Saving..." : "Stop"}
           </button>
         </div>
       </Card>
@@ -95,13 +107,19 @@ function Timer() {
             <option key={c}>{c}</option>
           ))}
         </select>
-        <input
+        <select
           aria-label="Project"
-          value={project}
-          onChange={(e) => setProject(e.target.value)}
-          placeholder="Project (optional)"
-          className={`${fieldCls} w-44`}
-        />
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+          className={fieldCls}
+        >
+          <option value="">No project</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.title}
+            </option>
+          ))}
+        </select>
         <button className={btnCls}>
           <Play size={16} aria-hidden="true" />
           Start
@@ -225,6 +243,8 @@ function Recent() {
 }
 
 export default function Time() {
+  const { entriesStatus, loadEntries } = useApp();
+
   return (
     <div className="space-y-6">
       <header>
@@ -233,9 +253,34 @@ export default function Time() {
           Track your time to see where it actually goes.
         </p>
       </header>
+
       <Timer />
-      <Summary />
-      <Recent />
+
+      {entriesStatus === "loading" && (
+        <div aria-busy="true" className="space-y-3">
+          <div className="h-48 animate-pulse rounded-xl bg-line/60" />
+          <div className="h-32 animate-pulse rounded-xl bg-line/60" />
+        </div>
+      )}
+
+      {entriesStatus === "error" && (
+        <div className="rounded-xl border border-dashed border-line p-10 text-center">
+          <p className="font-medium">Something went wrong.</p>
+          <p className="mt-1 text-sm text-muted">
+            We couldn&apos;t load your tracked time.
+          </p>
+          <button onClick={loadEntries} className={`${btnCls} mt-4`}>
+            Try again
+          </button>
+        </div>
+      )}
+
+      {entriesStatus === "ready" && (
+        <>
+          <Summary />
+          <Recent />
+        </>
+      )}
     </div>
   );
 }

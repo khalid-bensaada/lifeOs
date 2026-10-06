@@ -3,6 +3,7 @@ import { useApp, goalProgress } from "../context/AppContext";
 import { Card, Bar, Ring, Empty, Badge, btnCls } from "../components/ui";
 import { todayISO } from "../utils/dates";
 import { focusSeconds, fmt } from "../utils/time";
+import { useAuth } from "../context/AuthContext";
 
 const greeting = () => {
   const h = new Date().getHours();
@@ -14,6 +15,7 @@ const greeting = () => {
 export default function Dashboard() {
   const { tasks, goals, habits, entries, updateTask, toggleHabitLog } =
     useApp();
+  const { user } = useAuth();
 
   const focusToday = focusSeconds(entries, 0, 1);
   const focusWeek = focusSeconds(entries, 0, 7);
@@ -38,7 +40,9 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">{greeting()}, Khalid.</h1>
+        <h1 className="text-2xl font-semibold">
+          {greeting()}, {user.name}.
+        </h1>
         <p className="text-sm text-muted">
           {date}. Focus on what matters today.
         </p>
@@ -183,7 +187,7 @@ export default function Dashboard() {
                 </div>
                 <Bar value={goalProgress(g)} label={g.title} />
                 <p className="text-xs text-muted">
-                  Due {g.deadline} · {g.category}
+                  Due {g.deadline || "no date"} · {g.category}
                 </p>
               </li>
             ))}

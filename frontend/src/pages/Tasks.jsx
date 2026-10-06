@@ -13,29 +13,29 @@ const STATUS = {
 const PRIORITY = ["low", "medium", "high", "critical"];
 
 export default function Tasks() {
-  const { tasks, todayCount, addTask, updateTask, removeTask, toggleToday } =
-    useApp();
+  const {
+    tasks,
+    tasksStatus,
+    loadTasks,
+    todayCount,
+    addTask,
+    updateTask,
+    removeTask,
+    toggleToday,
+  } = useApp();
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState("medium");
   const [due, setDue] = useState("");
   const [filter, setFilter] = useState("all");
-  const [msg, setMsg] = useState("");
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!title.trim()) return;
-    addTask({ title: title.trim(), priority, est: 30, due });
-    setTitle("");
-    setDue("");
-  };
-
-  const star = (id) => {
-    const ok = toggleToday(id);
-    setMsg(
-      ok
-        ? ""
-        : `Today is limited to ${DAILY_LIMIT} priorities. Remove one first.`,
-    );
+    const ok = await addTask({ title: title.trim(), priority, est: 30, due });
+    if (ok) {
+      setTitle("");
+      setDue("");
+    }
   };
 
   const list = tasks.filter((t) => filter === "all" || t.status === filter);
@@ -103,70 +103,88 @@ export default function Tasks() {
         ))}
       </div>
 
-      {msg && (
-        <p role="alert" className="text-sm text-accent">
-          {msg}
-        </p>
+      {tasksStatus === "loading" && (
+        <div aria-busy="true" className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="h-12 animate-pulse rounded-xl bg-line/60" />
+          ))}
+        </div>
       )}
 
-      {list.length === 0 ? (
-        <Empty title="No tasks here" text="Add a task above to get started." />
-      ) : (
-        <Card className="divide-y divide-line !p-0">
-          {list.map((t) => (
-            <div
-              key={t.id}
-              className="flex flex-wrap items-center gap-3 px-4 py-3"
-            >
-              <input
-                type="checkbox"
-                aria-label={`Complete ${t.title}`}
-                checked={t.status === "completed"}
-                className="size-4 accent-[var(--accent)]"
-                onChange={() =>
-                  updateTask(t.id, {
-                    status: t.status === "completed" ? "todo" : "completed",
-                  })
-                }
-              />
-              <span
-                className={`min-w-0 flex-1 ${t.status === "completed" ? "text-muted line-through" : ""}`}
-              >
-                {t.title}
-              </span>
-              {t.due && <Badge>Due {t.due}</Badge>}
-              <Badge>{t.priority}</Badge>
-              <select
-                aria-label={`Status of ${t.title}`}
-                value={t.status}
-                onChange={(e) => updateTask(t.id, { status: e.target.value })}
-                className={`${fieldCls} !py-1`}
-              >
-                {Object.entries(STATUS).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={() => star(t.id)}
-                aria-pressed={t.today}
-                aria-label={t.today ? "Remove from today" : "Add to today"}
-                className={t.today ? "text-accent" : "text-muted"}
-              >
-                <Star size={18} fill={t.today ? "currentColor" : "none"} />
-              </button>
-              <button
-                onClick={() => removeTask(t.id)}
-                aria-label={`Delete ${t.title}`}
-                className="text-muted hover:text-ink"
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
-          ))}
-        </Card>
+      {tasksStatus === "error" && (
+        <div className="rounded-xl border border-dashed border-line p-10 text-center">
+          <p className="font-medium">Something went wrong.</p>
+          <p className="mt-1 text-sm text-muted">
+            We couldn&apos;t load your tasks.
+          </p>
+          <button onClick={loadTasks} className={`${btnCls} mt-4`}>
+            Try again
+          </button>
+        </div>
       )}
+
+      {tasksStatus === "ready" &&
+        (list.length === 0 ? (
+          <Empty
+            title="No tasks here"
+            text="Add a task above to get started."
+          />
+        ) : (
+          <Card className="divide-y divide-line !p-0">
+            {list.map((t) => (
+              <div
+                key={t.id}
+                className="flex flex-wrap items-center gap-3 px-4 py-3"
+              >
+                <input
+                  type="checkbox"
+                  aria-label={`Complete ${t.title}`}
+                  checked={t.status === "completed"}
+                  className="size-4 accent-[var(--accent)]"
+                  onChange={() =>
+                    updateTask(t.id, {
+                      status: t.status === "completed" ? "todo" : "completed",
+                    })
+                  }
+                />
+                <span
+                  className={`min-w-0 flex-1 ${t.status === "completed" ? "text-muted line-through" : ""}`}
+                >
+                  {t.title}
+                </span>
+                {t.due && <Badge>Due {t.due}</Badge>}
+                <Badge>{t.priority}</Badge>
+                <select
+                  aria-label={`Status of ${t.title}`}
+                  value={t.status}
+                  onChange={(e) => updateTask(t.id, { status: e.target.value })}
+                  className={`${fieldCls} !py-1`}
+                >
+                  {Object.entries(STATUS).map(([k, v]) => (
+                    <option key={k} value={k}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => toggleToday(t.id)}
+                  aria-pressed={t.today}
+                  aria-label={t.today ? "Remove from today" : "Add to today"}
+                  className={t.today ? "text-accent" : "text-muted"}
+                >
+                  <Star size={18} fill={t.today ? "currentColor" : "none"} />
+                </button>
+                <button
+                  onClick={() => removeTask(t.id)}
+                  aria-label={`Delete ${t.title}`}
+                  className="text-muted hover:text-ink"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            ))}
+          </Card>
+        ))}
     </div>
   );
 }

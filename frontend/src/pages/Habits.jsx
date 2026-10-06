@@ -80,18 +80,18 @@ function HabitCard({ h }) {
 }
 
 export default function Habits() {
-  const { habits, addHabit } = useApp();
+  const { habits, habitsStatus, loadHabits, addHabit } = useApp();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Programming");
 
   const today = todayISO();
   const doneToday = habits.filter((h) => h.logs.includes(today)).length;
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    addHabit({ name: name.trim(), category });
-    setName("");
+    const ok = await addHabit({ name: name.trim(), category });
+    if (ok) setName("");
   };
 
   return (
@@ -128,18 +128,39 @@ export default function Habits() {
         </button>
       </form>
 
-      {habits.length === 0 ? (
-        <Empty
-          title="No habits yet"
-          text="Start with one small habit you can repeat every day."
-        />
-      ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
-          {habits.map((h) => (
-            <HabitCard key={h.id} h={h} />
+      {habitsStatus === "loading" && (
+        <div aria-busy="true" className="grid gap-5 lg:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-52 animate-pulse rounded-xl bg-line/60" />
           ))}
         </div>
       )}
+
+      {habitsStatus === "error" && (
+        <div className="rounded-xl border border-dashed border-line p-10 text-center">
+          <p className="font-medium">Something went wrong.</p>
+          <p className="mt-1 text-sm text-muted">
+            We couldn&apos;t load your habits.
+          </p>
+          <button onClick={loadHabits} className={`${btnCls} mt-4`}>
+            Try again
+          </button>
+        </div>
+      )}
+
+      {habitsStatus === "ready" &&
+        (habits.length === 0 ? (
+          <Empty
+            title="No habits yet"
+            text="Start with one small habit you can repeat every day."
+          />
+        ) : (
+          <div className="grid gap-5 lg:grid-cols-2">
+            {habits.map((h) => (
+              <HabitCard key={h.id} h={h} />
+            ))}
+          </div>
+        ))}
     </div>
   );
 }

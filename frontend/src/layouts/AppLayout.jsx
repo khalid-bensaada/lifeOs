@@ -14,7 +14,10 @@ import {
   BarChart3,
   Settings,
   Moon,
+  LogOut,
 } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import { useApp } from "../context/AppContext";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -31,7 +34,6 @@ const NAV = [
   { to: "/settings", label: "Settings", icon: Settings },
 ];
 
-// العناصر التي تظهر في الشريط السفلي على الموبايل
 const MOBILE = [NAV[0], NAV[5], NAV[3]];
 
 const sideLink = ({ isActive }) =>
@@ -41,7 +43,12 @@ const sideLink = ({ isActive }) =>
       : "text-muted hover:bg-line/50"
   }`;
 
+const footerBtn =
+  "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted hover:bg-line/50";
+
 export default function AppLayout() {
+  const { user, logout } = useAuth();
+  const { taskError, clearTaskError } = useApp();
   const [dark, setDark] = useState(
     () => localStorage.getItem("theme") === "dark",
   );
@@ -55,9 +62,9 @@ export default function AppLayout() {
 
   return (
     <div className="min-h-screen md:flex">
-      {/* Sidebar: يظهر من حجم md وما فوق */}
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col border-r border-line bg-card p-4 md:flex">
-        <p className="mb-6 px-3 text-lg font-semibold">LifeOS</p>
+        <p className="mb-1 px-3 text-lg font-semibold">LifeOS</p>
+        <p className="mb-5 truncate px-3 text-xs text-muted">{user.name}</p>
         <nav aria-label="Main" className="flex-1 space-y-0.5 overflow-y-auto">
           {NAV.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === "/"} className={sideLink}>
@@ -66,24 +73,38 @@ export default function AppLayout() {
             </NavLink>
           ))}
         </nav>
-        <button
-          onClick={() => setDark(!dark)}
-          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted hover:bg-line/50"
-        >
+        <button onClick={() => setDark(!dark)} className={footerBtn}>
           <ThemeIcon size={18} aria-hidden="true" />
           {dark ? "Light mode" : "Dark mode"}
         </button>
+        <button onClick={logout} className={footerBtn}>
+          <LogOut size={18} aria-hidden="true" />
+          Log out
+        </button>
       </aside>
 
-      {/* المحتوى */}
       <main className="mx-auto w-full max-w-5xl flex-1 p-4 pb-24 sm:p-8 md:pb-8">
+        {taskError && (
+          <div
+            role="alert"
+            className="mb-4 flex items-start justify-between gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm"
+          >
+            <span>{taskError}</span>
+            <button
+              onClick={clearTaskError}
+              aria-label="Dismiss"
+              className="text-muted hover:text-ink"
+            >
+              ×
+            </button>
+          </div>
+        )}
         <Outlet />
       </main>
 
-      {/* الشريط السفلي: الموبايل فقط */}
       <nav
         aria-label="Mobile"
-        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-4 border-t border-line bg-card md:hidden"
+        className="fixed inset-x-0 bottom-0 z-10 grid grid-cols-5 border-t border-line bg-card md:hidden"
       >
         {MOBILE.map(({ to, label, icon: Icon }) => (
           <NavLink
@@ -104,6 +125,13 @@ export default function AppLayout() {
         >
           <ThemeIcon size={20} aria-hidden="true" />
           Theme
+        </button>
+        <button
+          onClick={logout}
+          className="flex flex-col items-center gap-1 py-2.5 text-xs text-muted"
+        >
+          <LogOut size={20} aria-hidden="true" />
+          Log out
         </button>
       </nav>
     </div>
