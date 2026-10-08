@@ -45,7 +45,7 @@ const StatsGrid = ({ s }) => (
   </div>
 );
 
-export default function Review() {
+function ReviewForm() {
   const { tasks, habits, entries, goals, reviews, saveReview } = useApp();
   const week = startOfWeek(todayISO());
   const existing = reviews.find((r) => r.weekStart === week);
@@ -57,6 +57,7 @@ export default function Review() {
   );
   const [custom, setCustom] = useState("");
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const open = tasks.filter(
     (t) => !["completed", "skipped"].includes(t.status),
@@ -81,16 +82,17 @@ export default function Review() {
     setCustom("");
   };
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
-    saveReview({
+    setSaving(true);
+    const ok = await saveReview({
       weekStart: week,
       answers,
       priorities,
       stats,
-      savedAt: todayISO(),
     });
-    setSaved(true);
+    setSaving(false);
+    setSaved(ok === true);
   };
 
   return (
@@ -205,8 +207,8 @@ export default function Review() {
         </Card>
 
         <div className="flex items-center gap-4">
-          <button className={btnCls}>
-            {existing ? "Update review" : "Save review"}
+          <button disabled={saving} className={`${btnCls} disabled:opacity-60`}>
+            {saving ? "Saving..." : existing ? "Update review" : "Save review"}
           </button>
           {saved && (
             <p role="status" className="text-sm text-accent">
@@ -270,4 +272,60 @@ export default function Review() {
       </Card>
     </div>
   );
+}
+
+export default function Review() {
+  const {
+    reviewsStatus,
+    tasksStatus,
+    habitsStatus,
+    entriesStatus,
+    goalsStatus,
+    loadReviews,
+    loadTasks,
+    loadHabits,
+    loadEntries,
+    loadGoals,
+  } = useApp();
+
+  const statuses = [
+    reviewsStatus,
+    tasksStatus,
+    habitsStatus,
+    entriesStatus,
+    goalsStatus,
+  ];
+
+  const retry = () => {
+    loadReviews();
+    loadTasks();
+    loadHabits();
+    loadEntries();
+    loadGoals();
+  };
+
+  if (statuses.includes("error")) {
+    return (
+      <div className="rounded-xl border border-dashed border-line p-10 text-center">
+        <p className="font-medium">Something went wrong.</p>
+        <p className="mt-1 text-sm text-muted">
+          We couldn&apos;t load the data for your review.
+        </p>
+        <button onClick={retry} className={`${btnCls} mt-4`}>
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  if (statuses.includes("loading")) {
+    return (
+      <div aria-busy="true" className="space-y-4">
+        <div className="h-24 animate-pulse rounded-xl bg-line/60" />
+        <div className="h-64 animate-pulse rounded-xl bg-line/60" />
+      </div>
+    );
+  }
+
+  return <ReviewForm />;
 }

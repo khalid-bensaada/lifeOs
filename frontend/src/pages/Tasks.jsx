@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Star, Trash2 } from "lucide-react";
-import { useApp, DAILY_LIMIT } from "../context/AppContext";
+import { useApp } from "../context/AppContext";
 import { Card, Empty, Badge, fieldCls, btnCls } from "../components/ui";
 
 const STATUS = {
@@ -18,6 +18,7 @@ export default function Tasks() {
     tasksStatus,
     loadTasks,
     todayCount,
+    dailyLimit,
     addTask,
     updateTask,
     removeTask,
@@ -45,7 +46,7 @@ export default function Tasks() {
       <header>
         <h1 className="text-2xl font-semibold">Tasks</h1>
         <p className="text-sm text-muted">
-          {todayCount} / {DAILY_LIMIT} marked as today&apos;s priorities.
+          {todayCount} / {dailyLimit} marked as today&apos;s priorities.
         </p>
       </header>
 

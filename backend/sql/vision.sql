@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS life_vision (
+    user_id BIGINT UNSIGNED PRIMARY KEY,
+    one_year TEXT NULL,
+    three_year TEXT NULL,
+    skills TEXT NULL,
+    projects TEXT NULL,
+    habits TEXT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE = InnoDB;

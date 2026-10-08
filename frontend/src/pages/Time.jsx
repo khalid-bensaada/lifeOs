@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { Play, Square, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Pause, Play, Square, Trash2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { Card, Bar, Empty, Badge, fieldCls, btnCls } from "../components/ui";
 import { lastDays } from "../utils/dates";
-import { fmt, clock } from "../utils/time";
+import { fmt, clock, elapsedMs } from "../utils/time";
 
 const CATEGORIES = [
   "Programming",
@@ -26,19 +27,22 @@ const RANGES = [
 ];
 
 function Timer() {
-  const { active, projects, startTimer, stopTimer } = useApp();
+  const { active, projects, startTimer, pauseTimer, resumeTimer, stopTimer } =
+    useApp();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Programming");
   const [projectId, setProjectId] = useState("");
   const [now, setNow] = useState(Date.now());
   const [stopping, setStopping] = useState(false);
 
+  const paused = active ? active.resumedAt === null : false;
+
   useEffect(() => {
-    if (!active) return;
+    if (!active || paused) return;
     setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
-  }, [active]);
+  }, [active, paused]);
 
   const submit = (e) => {
     e.preventDefault();
@@ -46,6 +50,7 @@ function Timer() {
       title: title.trim() || category,
       category,
       projectId: projectId ? Number(projectId) : null,
+      taskId: null,
     });
     setTitle("");
     setProjectId("");
@@ -58,37 +63,68 @@ function Timer() {
   };
 
   if (active) {
-    const elapsed = Math.max(0, Math.floor((now - active.startedAt) / 1000));
+    const elapsed = Math.max(0, Math.floor(elapsedMs(active, now) / 1000));
     const project = projects.find((p) => p.id === active.projectId);
     return (
-      <Card className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="font-semibold">{active.title}</p>
-          <p className="mt-1 flex gap-2">
-            <Badge>{active.category}</Badge>
-            {project && <Badge>{project.title}</Badge>}
-          </p>
+      <Card className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="font-semibold">{active.title}</p>
+            <p className="mt-1 flex gap-2">
+              <Badge>{active.category}</Badge>
+              {project && <Badge>{project.title}</Badge>}
+              {paused && <Badge>Paused</Badge>}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className="text-3xl font-semibold tabular-nums"
+              aria-live="off"
+            >
+              {clock(elapsed)}
+            </span>
+            {paused ? (
+              <button onClick={resumeTimer} className={btnCls}>
+                <Play size={16} aria-hidden="true" />
+                Resume
+              </button>
+            ) : (
+              <button
+                onClick={pauseTimer}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3.5 py-2 text-sm font-medium"
+              >
+                <Pause size={16} aria-hidden="true" />
+                Pause
+              </button>
+            )}
+            <button
+              onClick={stop}
+              disabled={stopping}
+              className={`${btnCls} disabled:opacity-60`}
+            >
+              <Square size={16} aria-hidden="true" />
+              {stopping ? "Saving..." : "Stop"}
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-4">
-          <span className="text-3xl font-semibold tabular-nums" aria-live="off">
-            {clock(elapsed)}
-          </span>
-          <button
-            onClick={stop}
-            disabled={stopping}
-            className={`${btnCls} disabled:opacity-60`}
-          >
-            <Square size={16} aria-hidden="true" />
-            {stopping ? "Saving..." : "Stop"}
-          </button>
-        </div>
+        <Link
+          to="/focus"
+          className="inline-block text-sm text-accent hover:underline"
+        >
+          Open focus mode
+        </Link>
       </Card>
     );
   }
 
   return (
-    <Card>
-      <h2 className="mb-3 font-semibold">What are you working on?</h2>
+    <Card className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-semibold">What are you working on?</h2>
+        <Link to="/focus" className="text-sm text-accent hover:underline">
+          Focus mode
+        </Link>
+      </div>
       <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
           aria-label="What are you working on"
@@ -223,7 +259,12 @@ function Recent() {
     <Card className="divide-y divide-line !p-0">
       {entries.slice(0, 8).map((x) => (
         <div key={x.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-          <span className="min-w-0 flex-1">{x.title}</span>
+          <span className="min-w-0 flex-1">
+            <span className="block">{x.title}</span>
+            {x.note && (
+              <span className="block text-xs text-muted">{x.note}</span>
+            )}
+          </span>
           <Badge>{x.category}</Badge>
           <span className="text-sm text-muted">{x.date}</span>
           <span className="w-16 text-right text-sm font-medium">

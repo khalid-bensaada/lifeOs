@@ -10,6 +10,9 @@ export const create = async (userId, data) => {
   ) {
     throw new ApiError(400, "Project not found");
   }
+  if (data.taskId != null && !(await repo.taskOwned(userId, data.taskId))) {
+    throw new ApiError(400, "Task not found");
+  }
   const id = await repo.create(userId, data);
   return repo.findById(userId, id);
 };

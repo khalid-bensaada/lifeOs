@@ -15,3 +15,17 @@ export const parseDate = (value) => {
   }
   return value;
 };
+
+export const parseLevel = (value) => {
+  const n = parseId(value);
+  if (n > 4) throw new ApiError(400, "Invalid level");
+  return n;
+};
+
+export const parseWeekStart = (value) => {
+  parseDate(value);
+  if (new Date(`${value}T00:00:00Z`).getUTCDay() !== 1) {
+    throw new ApiError(400, "Week must start on a Monday");
+  }
+  return value;
+};

@@ -22,11 +22,11 @@ const CATEGORIES = [
 function AddLine({ label, placeholder, onAdd }) {
   const [text, setText] = useState("");
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!text.trim()) return;
-    onAdd(text.trim());
-    setText("");
+    const ok = await onAdd(text.trim());
+    if (ok) setText("");
   };
 
   return (
@@ -168,15 +168,15 @@ function SkillCard({ k }) {
 }
 
 export default function Skills() {
-  const { skills, addSkill } = useApp();
+  const { skills, skillsStatus, loadSkills, addSkill } = useApp();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Programming");
 
-  const submit = (e) => {
+  const submit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
-    addSkill({ name: name.trim(), category });
-    setName("");
+    const ok = await addSkill({ name: name.trim(), category });
+    if (ok) setName("");
   };
 
   return (
@@ -213,18 +213,39 @@ export default function Skills() {
         </button>
       </form>
 
-      {skills.length === 0 ? (
-        <Empty
-          title="No skills yet"
-          text="Add a skill, then break each level into milestones."
-        />
-      ) : (
-        <div className="grid items-start gap-5 lg:grid-cols-2">
-          {skills.map((k) => (
-            <SkillCard key={k.id} k={k} />
+      {skillsStatus === "loading" && (
+        <div aria-busy="true" className="grid gap-5 lg:grid-cols-2">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-72 animate-pulse rounded-xl bg-line/60" />
           ))}
         </div>
       )}
+
+      {skillsStatus === "error" && (
+        <div className="rounded-xl border border-dashed border-line p-10 text-center">
+          <p className="font-medium">Something went wrong.</p>
+          <p className="mt-1 text-sm text-muted">
+            We couldn&apos;t load your skills.
+          </p>
+          <button onClick={loadSkills} className={`${btnCls} mt-4`}>
+            Try again
+          </button>
+        </div>
+      )}
+
+      {skillsStatus === "ready" &&
+        (skills.length === 0 ? (
+          <Empty
+            title="No skills yet"
+            text="Add a skill, then break each level into milestones."
+          />
+        ) : (
+          <div className="grid items-start gap-5 lg:grid-cols-2">
+            {skills.map((k) => (
+              <SkillCard key={k.id} k={k} />
+            ))}
+          </div>
+        ))}
     </div>
   );
 }

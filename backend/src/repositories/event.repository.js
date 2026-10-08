@@ -1,5 +1,12 @@
 import { pool } from "../config/db.js";
 
+const COLUMNS = {
+  title: "title",
+  date: "event_date",
+  start: "start_time",
+  end: "end_time",
+};
+
 const toEvent = (r) => ({
   id: r.id,
   title: r.title,
@@ -40,6 +47,20 @@ export const create = async (userId, d) => {
     },
   );
   return result.insertId;
+};
+
+export const update = async (userId, id, patch) => {
+  const keys = Object.keys(patch).filter((k) => k in COLUMNS);
+  if (!keys.length) return;
+  const set = keys.map((k) => `${COLUMNS[k]} = :${k}`).join(", ");
+  await pool.query(
+    `UPDATE calendar_events SET ${set} WHERE id = :id AND user_id = :userId`,
+    {
+      ...patch,
+      id,
+      userId,
+    },
+  );
 };
 
 export const remove = async (userId, id) => {

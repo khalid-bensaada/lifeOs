@@ -5,15 +5,19 @@ import {
   useEffect,
   useState,
 } from "react";
-import { demoSkills, demoReviews } from "../data/demo";
 import { toISO } from "../utils/dates";
+import { elapsedMs } from "../utils/time";
 import { useAuth } from "./AuthContext";
+import { useSettings } from "./SettingsContext";
 import * as goalsApi from "../services/goals";
 import * as tasksApi from "../services/tasks";
 import * as projectsApi from "../services/projects";
 import * as habitsApi from "../services/habits";
 import * as timeApi from "../services/time";
 import * as eventsApi from "../services/events";
+import * as skillsApi from "../services/skills";
+import * as reviewsApi from "../services/reviews";
+import * as dailyApi from "../services/dailyReviews";
 
 const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);
@@ -27,13 +31,10 @@ export const goalProgress = (g) => {
     : 0;
 };
 
-const uid = () => crypto.randomUUID();
-
 export function AppProvider({ children }) {
   const { user } = useAuth();
-
-  const [skills, setSkills] = useState(demoSkills);
-  const [reviews, setReviews] = useState(demoReviews);
+  const { settings } = useSettings();
+  const dailyLimit = settings.dailyTaskLimit;
 
   const [goals, setGoals] = useState([]);
   const [goalsStatus, setGoalsStatus] = useState("loading");
@@ -52,6 +53,15 @@ export function AppProvider({ children }) {
 
   const [events, setEvents] = useState([]);
   const [eventsStatus, setEventsStatus] = useState("loading");
+
+  const [skills, setSkills] = useState([]);
+  const [skillsStatus, setSkillsStatus] = useState("loading");
+
+  const [reviews, setReviews] = useState([]);
+  const [reviewsStatus, setReviewsStatus] = useState("loading");
+
+  const [dailyReviews, setDailyReviews] = useState([]);
+  const [dailyStatus, setDailyStatus] = useState("loading");
 
   const [taskError, setTaskError] = useState("");
 
@@ -102,6 +112,18 @@ export function AppProvider({ children }) {
     makeLoader(eventsApi, setEvents, setEventsStatus),
     [],
   );
+  const loadSkills = useCallback(
+    makeLoader(skillsApi, setSkills, setSkillsStatus),
+    [],
+  );
+  const loadReviews = useCallback(
+    makeLoader(reviewsApi, setReviews, setReviewsStatus),
+    [],
+  );
+  const loadDaily = useCallback(
+    makeLoader(dailyApi, setDailyReviews, setDailyStatus),
+    [],
+  );
 
   useEffect(() => {
     if (user) {
@@ -111,6 +133,9 @@ export function AppProvider({ children }) {
       loadHabits();
       loadEntries();
       loadEvents();
+      loadSkills();
+      loadReviews();
+      loadDaily();
     } else {
       setGoals([]);
       setTasks([]);
@@ -118,12 +143,18 @@ export function AppProvider({ children }) {
       setHabits([]);
       setEntries([]);
       setEvents([]);
+      setSkills([]);
+      setReviews([]);
+      setDailyReviews([]);
       setGoalsStatus("loading");
       setTasksStatus("loading");
       setProjectsStatus("loading");
       setHabitsStatus("loading");
       setEntriesStatus("loading");
       setEventsStatus("loading");
+      setSkillsStatus("loading");
+      setReviewsStatus("loading");
+      setDailyStatus("loading");
     }
   }, [
     user?.id,
@@ -133,6 +164,9 @@ export function AppProvider({ children }) {
     loadHabits,
     loadEntries,
     loadEvents,
+    loadSkills,
+    loadReviews,
+    loadDaily,
   ]);
 
   const todayCount = tasks.filter((t) => t.today).length;
@@ -180,9 +214,9 @@ export function AppProvider({ children }) {
   const toggleToday = async (id) => {
     const t = tasks.find((x) => x.id === id);
     if (!t) return false;
-    if (!t.today && todayCount >= DAILY_LIMIT) {
+    if (!t.today && todayCount >= dailyLimit) {
       setTaskError(
-        `Today is limited to ${DAILY_LIMIT} priorities. Remove one first.`,
+        `Today is limited to ${dailyLimit} priorities. Remove one first.`,
       );
       return false;
     }
@@ -261,24 +295,46 @@ export function AppProvider({ children }) {
       }
     });
 
-  const startTimer = (t) => setActive({ ...t, startedAt: Date.now() });
+  const startTimer = (t) => {
+    const now = Date.now();
+    setActive({ ...t, startedAt: now, accumulated: 0, resumedAt: now });
+  };
 
-  const stopTimer = () =>
+  const pauseTimer = () =>
+    setActive((a) => {
+      if (!a || a.resumedAt === null) return a;
+      return { ...a, accumulated: elapsedMs(a, Date.now()), resumedAt: null };
+    });
+
+  const resumeTimer = () =>
+    setActive((a) => {
+      if (!a || a.resumedAt !== null) return a;
+      return { ...a, resumedAt: Date.now() };
+    });
+
+  const discardTimer = () => setActive(null);
+
+  const stopTimer = (opts = {}) =>
     guard(async () => {
       if (!active) return false;
       const seconds = Math.min(
         604800,
-        Math.max(1, Math.round((Date.now() - active.startedAt) / 1000)),
+        Math.max(1, Math.round(elapsedMs(active, Date.now()) / 1000)),
       );
       const saved = await timeApi.create({
         category: active.category,
         title: active.title,
         projectId: active.projectId,
+        taskId: active.taskId,
+        note: opts.note,
         date: toISO(new Date(active.startedAt)),
         seconds,
       });
       setEntries((s) => [saved, ...s]);
       setActive(null);
+      if (opts.completeTask && active.taskId) {
+        await updateTask(active.taskId, { status: "completed" });
+      }
       return true;
     });
 
@@ -293,6 +349,13 @@ export function AppProvider({ children }) {
     guard(async () => {
       const saved = await eventsApi.create(e);
       setEvents((s) => [...s, saved]);
+      return true;
+    });
+
+  const updateEvent = (id, patch) =>
+    guard(async () => {
+      const saved = await eventsApi.update(id, patch);
+      setEvents((s) => s.map((x) => (x.id === id ? saved : x)));
       return true;
     });
 
@@ -330,71 +393,76 @@ export function AppProvider({ children }) {
     replaceGoal(await goalsApi.updateMilestone(gid, mid, { done: !m.done }));
   };
 
-  const addSkill = (s) =>
-    setSkills((x) => [
-      {
-        id: uid(),
-        projects: [],
-        levels: [0, 1, 2, 3].map(() => ({ milestones: [] })),
-        ...s,
-      },
-      ...x,
-    ]);
+  const replaceSkill = (k) =>
+    setSkills((s) => s.map((x) => (x.id === k.id ? k : x)));
 
-  const removeSkill = (id) => setSkills((x) => x.filter((k) => k.id !== id));
+  const addSkill = (data) =>
+    guard(async () => {
+      const saved = await skillsApi.create(data);
+      setSkills((s) => [saved, ...s]);
+      return true;
+    });
 
-  const patchSkill = (id, fn) =>
-    setSkills((x) => x.map((k) => (k.id === id ? fn(k) : k)));
+  const removeSkill = (id) =>
+    guard(async () => {
+      await skillsApi.remove(id);
+      setSkills((s) => s.filter((k) => k.id !== id));
+      return true;
+    });
 
-  const addSkillMilestone = (id, li, title) =>
-    patchSkill(id, (k) => ({
-      ...k,
-      levels: k.levels.map((l, i) =>
-        i === li
-          ? {
-              ...l,
-              milestones: [...l.milestones, { id: uid(), title, done: false }],
-            }
-          : l,
-      ),
-    }));
+  const addSkillMilestone = (id, levelIndex, title) =>
+    guard(async () => {
+      replaceSkill(await skillsApi.addMilestone(id, levelIndex + 1, title));
+      return true;
+    });
 
-  const toggleSkillMilestone = (id, li, mid) =>
-    patchSkill(id, (k) => ({
-      ...k,
-      levels: k.levels.map((l, i) =>
-        i === li
-          ? {
-              ...l,
-              milestones: l.milestones.map((m) =>
-                m.id === mid ? { ...m, done: !m.done } : m,
-              ),
-            }
-          : l,
-      ),
-    }));
+  const toggleSkillMilestone = (id, levelIndex, mid) =>
+    guard(async () => {
+      const m = skills
+        .find((k) => k.id === id)
+        ?.levels[levelIndex]?.milestones.find((x) => x.id === mid);
+      if (!m) return false;
+      replaceSkill(await skillsApi.setMilestone(id, mid, !m.done));
+      return true;
+    });
 
   const addPractice = (id, title) =>
-    patchSkill(id, (k) => ({
-      ...k,
-      projects: [...k.projects, { id: uid(), title, done: false }],
-    }));
+    guard(async () => {
+      replaceSkill(await skillsApi.addPractice(id, title));
+      return true;
+    });
 
   const togglePractice = (id, pid) =>
-    patchSkill(id, (k) => ({
-      ...k,
-      projects: k.projects.map((p) =>
-        p.id === pid ? { ...p, done: !p.done } : p,
-      ),
-    }));
+    guard(async () => {
+      const p = skills
+        .find((k) => k.id === id)
+        ?.projects.find((x) => x.id === pid);
+      if (!p) return false;
+      replaceSkill(await skillsApi.setPractice(id, pid, !p.done));
+      return true;
+    });
 
   const saveReview = (r) =>
-    setReviews((s) =>
-      [
-        { id: uid(), ...r },
-        ...s.filter((x) => x.weekStart !== r.weekStart),
-      ].sort((a, b) => b.weekStart.localeCompare(a.weekStart)),
-    );
+    guard(async () => {
+      const saved = await reviewsApi.save(r.weekStart, r);
+      setReviews((s) =>
+        [saved, ...s.filter((x) => x.weekStart !== saved.weekStart)].sort(
+          (a, b) => b.weekStart.localeCompare(a.weekStart),
+        ),
+      );
+      return true;
+    });
+
+  const saveDailyReview = (date, data) =>
+    guard(async () => {
+      const saved = await dailyApi.save(date, data);
+      setDailyReviews((s) =>
+        [saved, ...s.filter((x) => x.date !== saved.date)].sort((a, b) =>
+          b.date.localeCompare(a.date),
+        ),
+      );
+      return true;
+    });
 
   return (
     <Ctx.Provider
@@ -420,9 +488,17 @@ export function AppProvider({ children }) {
         eventsStatus,
         loadEvents,
         skills,
+        skillsStatus,
+        loadSkills,
         reviews,
+        reviewsStatus,
+        loadReviews,
+        dailyReviews,
+        dailyStatus,
+        loadDaily,
         active,
         todayCount,
+        dailyLimit,
         addTask,
         updateTask,
         removeTask,
@@ -438,9 +514,13 @@ export function AppProvider({ children }) {
         removeHabit,
         toggleHabitLog,
         startTimer,
+        pauseTimer,
+        resumeTimer,
         stopTimer,
+        discardTimer,
         removeEntry,
         addEvent,
+        updateEvent,
         removeEvent,
         addSkill,
         removeSkill,
@@ -449,6 +529,7 @@ export function AppProvider({ children }) {
         addPractice,
         togglePractice,
         saveReview,
+        saveDailyReview,
       }}
     >
       {children}

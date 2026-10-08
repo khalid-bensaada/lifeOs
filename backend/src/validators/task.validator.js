@@ -37,6 +37,7 @@ export const createTaskSchema = z.object({
   due: fields.due.optional(),
   est: fields.est.optional(),
   projectId: fields.projectId.optional(),
+  today: fields.today.optional(),
 });
 
 export const updateTaskSchema = z

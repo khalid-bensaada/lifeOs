@@ -31,3 +31,7 @@ export const focusSeconds = (entries, offset, days) => {
     .filter((x) => set.has(x.date) && FOCUS.includes(x.category))
     .reduce((n, x) => n + x.seconds, 0);
 };
+
+export const elapsedMs = (timer, now) =>
+  (timer.accumulated || 0) +
+  (timer.resumedAt === null ? 0 : now - (timer.resumedAt ?? timer.startedAt));

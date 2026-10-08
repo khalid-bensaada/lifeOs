@@ -32,6 +32,7 @@ export const get = (userId, id) => mustFind(userId, id);
 
 export const create = async (userId, data) => {
   await checkProject(userId, data.projectId);
+  if (data.today) await checkLimit(userId);
   const id = await repo.create(userId, data);
   return repo.findById(userId, id);
 };

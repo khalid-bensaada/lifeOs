@@ -1,0 +1,24 @@
+CREATE TABLE IF NOT EXISTS notes (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    body TEXT NOT NULL,
+    goal_id BIGINT UNSIGNED NULL,
+    project_id BIGINT UNSIGNED NULL,
+    skill_id BIGINT UNSIGNED NULL,
+    task_id BIGINT UNSIGNED NULL,
+    review_id BIGINT UNSIGNED NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (goal_id) REFERENCES goals(id) ON DELETE
+    SET NULL,
+        FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE
+    SET NULL,
+        FOREIGN KEY (skill_id) REFERENCES skills(id) ON DELETE
+    SET NULL,
+        FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE
+    SET NULL,
+        FOREIGN KEY (review_id) REFERENCES weekly_reviews(id) ON DELETE
+    SET NULL,
+        INDEX idx_notes_user (user_id, created_at)
+) ENGINE = InnoDB;

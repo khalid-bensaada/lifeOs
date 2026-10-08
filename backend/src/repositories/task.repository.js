@@ -7,9 +7,10 @@ const COLUMNS = {
   status: "status",
   due: "due_date",
   est: "est_min",
-  today: "is_today",
   projectId: "project_id",
 };
+
+const SELECT = "*, (planned_date = CURDATE()) AS today_flag";
 
 const toTask = (r) => ({
   id: r.id,
@@ -19,13 +20,15 @@ const toTask = (r) => ({
   status: r.status,
   due: r.due_date,
   est: r.est_min,
-  today: Boolean(r.is_today),
+  today: Boolean(r.today_flag),
   projectId: r.project_id,
 });
 
 export const listByUser = async (userId) => {
   const [rows] = await pool.query(
-    "SELECT * FROM tasks WHERE user_id = :userId AND archived_at IS NULL ORDER BY created_at DESC, id DESC",
+    `SELECT ${SELECT} FROM tasks
+     WHERE user_id = :userId AND archived_at IS NULL
+     ORDER BY created_at DESC, id DESC`,
     { userId },
   );
   return rows.map(toTask);
@@ -33,7 +36,7 @@ export const listByUser = async (userId) => {
 
 export const findById = async (userId, id) => {
   const [rows] = await pool.query(
-    "SELECT * FROM tasks WHERE id = :id AND user_id = :userId AND archived_at IS NULL",
+    `SELECT ${SELECT} FROM tasks WHERE id = :id AND user_id = :userId AND archived_at IS NULL`,
     { id, userId },
   );
   return rows[0] ? toTask(rows[0]) : null;
@@ -41,8 +44,8 @@ export const findById = async (userId, id) => {
 
 export const create = async (userId, d) => {
   const [result] = await pool.query(
-    `INSERT INTO tasks (user_id, project_id, title, description, priority, due_date, est_min)
-     VALUES (:userId, :projectId, :title, :description, :priority, :due, :est)`,
+    `INSERT INTO tasks (user_id, project_id, title, description, priority, due_date, est_min, planned_date)
+     VALUES (:userId, :projectId, :title, :description, :priority, :due, :est, IF(:today, CURDATE(), NULL))`,
     {
       userId,
       projectId: d.projectId ?? null,
@@ -51,18 +54,31 @@ export const create = async (userId, d) => {
       priority: d.priority ?? "medium",
       due: d.due ?? null,
       est: d.est ?? 30,
+      today: d.today ? 1 : 0,
     },
   );
   return result.insertId;
 };
 
 export const update = async (userId, id, patch) => {
-  const keys = Object.keys(patch).filter((k) => k in COLUMNS);
-  if (!keys.length) return;
-  const set = keys.map((k) => `${COLUMNS[k]} = :${k}`).join(", ");
+  const sets = [];
+  const params = { id, userId };
+
+  for (const key of Object.keys(patch)) {
+    if (key === "today") {
+      sets.push(
+        patch.today ? "planned_date = CURDATE()" : "planned_date = NULL",
+      );
+    } else if (key in COLUMNS) {
+      sets.push(`${COLUMNS[key]} = :${key}`);
+      params[key] = patch[key];
+    }
+  }
+
+  if (!sets.length) return;
   await pool.query(
-    `UPDATE tasks SET ${set} WHERE id = :id AND user_id = :userId`,
-    { ...patch, id, userId },
+    `UPDATE tasks SET ${sets.join(", ")} WHERE id = :id AND user_id = :userId`,
+    params,
   );
 };
 
@@ -95,7 +111,7 @@ export const dailyLimit = async (userId) => {
 
 export const countToday = async (userId) => {
   const [rows] = await pool.query(
-    "SELECT COUNT(*) AS n FROM tasks WHERE user_id = :userId AND is_today = TRUE AND archived_at IS NULL",
+    "SELECT COUNT(*) AS n FROM tasks WHERE user_id = :userId AND planned_date = CURDATE() AND archived_at IS NULL",
     { userId },
   );
   return Number(rows[0].n);

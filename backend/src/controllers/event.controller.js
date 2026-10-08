@@ -14,6 +14,15 @@ export const create = asyncHandler(async (req, res) => {
   res.status(201).json({ success: true, data: { event } });
 });
 
+export const update = asyncHandler(async (req, res) => {
+  const event = await service.update(
+    req.user.id,
+    parseId(req.params.id),
+    req.body,
+  );
+  res.json({ success: true, data: { event } });
+});
+
 export const remove = asyncHandler(async (req, res) => {
   await service.remove(req.user.id, parseId(req.params.id));
   res.json({ success: true, data: null });

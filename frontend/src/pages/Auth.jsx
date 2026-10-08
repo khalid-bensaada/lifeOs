@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { useT } from "../i18n/useT";
 import { Card, fieldCls, btnCls } from "../components/ui";
 
 export default function Auth({ mode }) {
+  const { t } = useT();
   const { user, login, register } = useAuth();
   const isRegister = mode === "register";
   const [form, setForm] = useState({ name: "", email: "", password: "" });
@@ -34,16 +36,14 @@ export default function Auth({ mode }) {
         <div>
           <h1 className="text-2xl font-semibold">LifeOS</h1>
           <p className="text-sm text-muted">
-            {isRegister
-              ? "Create your account."
-              : "Welcome back. Log in to continue."}
+            {isRegister ? t("auth.createSub") : t("auth.welcomeBack")}
           </p>
         </div>
 
         <form onSubmit={submit} className="space-y-4">
           {isRegister && (
             <label className="block space-y-1.5">
-              <span className="text-sm font-medium">Name</span>
+              <span className="text-sm font-medium">{t("auth.name")}</span>
               <input
                 value={form.name}
                 onChange={set("name")}
@@ -54,9 +54,10 @@ export default function Auth({ mode }) {
             </label>
           )}
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">Email</span>
+            <span className="text-sm font-medium">{t("auth.email")}</span>
             <input
               type="email"
+              dir="ltr"
               value={form.email}
               onChange={set("email")}
               autoComplete="email"
@@ -65,9 +66,10 @@ export default function Auth({ mode }) {
             />
           </label>
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">Password</span>
+            <span className="text-sm font-medium">{t("auth.password")}</span>
             <input
               type="password"
+              dir="ltr"
               value={form.password}
               onChange={set("password")}
               autoComplete={isRegister ? "new-password" : "current-password"}
@@ -75,7 +77,9 @@ export default function Auth({ mode }) {
               className={`${fieldCls} w-full`}
             />
             {isRegister && (
-              <span className="text-xs text-muted">At least 8 characters.</span>
+              <span className="text-xs text-muted">
+                {t("auth.passwordHint")}
+              </span>
             )}
           </label>
 
@@ -89,17 +93,21 @@ export default function Auth({ mode }) {
             disabled={busy}
             className={`${btnCls} w-full justify-center disabled:opacity-60`}
           >
-            {busy ? "Please wait..." : isRegister ? "Create account" : "Log in"}
+            {busy
+              ? t("common.pleaseWait")
+              : isRegister
+                ? t("auth.createAccount")
+                : t("auth.login")}
           </button>
         </form>
 
         <p className="text-sm text-muted">
-          {isRegister ? "Already have an account? " : "New here? "}
+          {isRegister ? t("auth.haveAccount") : t("auth.newHere")}{" "}
           <Link
             to={isRegister ? "/login" : "/register"}
             className="text-accent hover:underline"
           >
-            {isRegister ? "Log in" : "Create an account"}
+            {isRegister ? t("auth.login") : t("auth.createLink")}
           </Link>
         </p>
       </Card>
