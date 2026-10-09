@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Pause, Play, Square, Trash2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Bar, Empty, Badge, fieldCls, btnCls } from "../components/ui";
 import { lastDays } from "../utils/dates";
 import { fmt, clock, elapsedMs } from "../utils/time";
@@ -21,12 +22,13 @@ const CATEGORIES = [
 ];
 
 const RANGES = [
-  { key: "today", label: "Today", days: 1 },
-  { key: "week", label: "Last 7 days", days: 7 },
-  { key: "month", label: "Last 30 days", days: 30 },
+  { key: "today", labelKey: "time.today", days: 1 },
+  { key: "week", labelKey: "time.last7", days: 7 },
+  { key: "month", labelKey: "time.last30", days: 30 },
 ];
 
 function Timer() {
+  const { t, tc } = useT();
   const { active, projects, startTimer, pauseTimer, resumeTimer, stopTimer } =
     useApp();
   const [title, setTitle] = useState("");
@@ -47,7 +49,7 @@ function Timer() {
   const submit = (e) => {
     e.preventDefault();
     startTimer({
-      title: title.trim() || category,
+      title: title.trim() || tc(category),
       category,
       projectId: projectId ? Number(projectId) : null,
       taskId: null,
@@ -71,14 +73,15 @@ function Timer() {
           <div>
             <p className="font-semibold">{active.title}</p>
             <p className="mt-1 flex gap-2">
-              <Badge>{active.category}</Badge>
+              <Badge>{tc(active.category)}</Badge>
               {project && <Badge>{project.title}</Badge>}
-              {paused && <Badge>Paused</Badge>}
+              {paused && <Badge>{t("time.paused")}</Badge>}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span
               className="text-3xl font-semibold tabular-nums"
+              dir="ltr"
               aria-live="off"
             >
               {clock(elapsed)}
@@ -86,7 +89,7 @@ function Timer() {
             {paused ? (
               <button onClick={resumeTimer} className={btnCls}>
                 <Play size={16} aria-hidden="true" />
-                Resume
+                {t("time.resume")}
               </button>
             ) : (
               <button
@@ -94,7 +97,7 @@ function Timer() {
                 className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3.5 py-2 text-sm font-medium"
               >
                 <Pause size={16} aria-hidden="true" />
-                Pause
+                {t("time.pause")}
               </button>
             )}
             <button
@@ -103,7 +106,7 @@ function Timer() {
               className={`${btnCls} disabled:opacity-60`}
             >
               <Square size={16} aria-hidden="true" />
-              {stopping ? "Saving..." : "Stop"}
+              {stopping ? t("common.saving") : t("time.stop")}
             </button>
           </div>
         </div>
@@ -111,7 +114,7 @@ function Timer() {
           to="/focus"
           className="inline-block text-sm text-accent hover:underline"
         >
-          Open focus mode
+          {t("time.openFocus")}
         </Link>
       </Card>
     );
@@ -120,36 +123,38 @@ function Timer() {
   return (
     <Card className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-semibold">What are you working on?</h2>
+        <h2 className="font-semibold">{t("time.whatWorking")}</h2>
         <Link to="/focus" className="text-sm text-accent hover:underline">
-          Focus mode
+          {t("time.focusMode")}
         </Link>
       </div>
       <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
-          aria-label="What are you working on"
+          aria-label={t("time.whatLabel")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Build the habits page"
+          placeholder={t("time.titlePlaceholder")}
           className={`${fieldCls} min-w-0 flex-1`}
         />
         <select
-          aria-label="Category"
+          aria-label={t("common.category")}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           className={fieldCls}
         >
           {CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
+            <option key={c} value={c}>
+              {tc(c)}
+            </option>
           ))}
         </select>
         <select
-          aria-label="Project"
+          aria-label={t("time.project")}
           value={projectId}
           onChange={(e) => setProjectId(e.target.value)}
           className={fieldCls}
         >
-          <option value="">No project</option>
+          <option value="">{t("time.noProject")}</option>
           {projects.map((p) => (
             <option key={p.id} value={p.id}>
               {p.title}
@@ -158,7 +163,7 @@ function Timer() {
         </select>
         <button className={btnCls}>
           <Play size={16} aria-hidden="true" />
-          Start
+          {t("time.start")}
         </button>
       </form>
     </Card>
@@ -166,6 +171,7 @@ function Timer() {
 }
 
 function Summary() {
+  const { t, tc } = useT();
   const { entries } = useApp();
   const [range, setRange] = useState("today");
   const days = RANGES.find((r) => r.key === range).days;
@@ -191,8 +197,12 @@ function Summary() {
   return (
     <Card className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-semibold">Where did my time go?</h2>
-        <div className="flex gap-2" role="group" aria-label="Time range">
+        <h2 className="font-semibold">{t("time.whereTime")}</h2>
+        <div
+          className="flex gap-2"
+          role="group"
+          aria-label={t("time.rangeLabel")}
+        >
           {RANGES.map((r) => (
             <button
               key={r.key}
@@ -204,31 +214,34 @@ function Summary() {
                   : "border-line text-muted"
               }`}
             >
-              {r.label}
+              {t(r.labelKey)}
             </button>
           ))}
         </div>
       </div>
 
       {byCategory.length === 0 ? (
-        <Empty
-          title="No time tracked yet"
-          text="Start the timer to see where your time goes."
-        />
+        <Empty title={t("time.noTracked")} text={t("time.noTrackedText")} />
       ) : (
         <>
           <div className="grid grid-cols-3 gap-3 text-center">
             <div>
-              <p className="text-lg font-semibold">{fmt(total)}</p>
-              <p className="text-xs text-muted">Total</p>
+              <p className="text-lg font-semibold" dir="ltr">
+                {fmt(total)}
+              </p>
+              <p className="text-xs text-muted">{t("time.total")}</p>
             </div>
             <div>
-              <p className="text-lg font-semibold">{fmt(total - wasted)}</p>
-              <p className="text-xs text-muted">Productive</p>
+              <p className="text-lg font-semibold" dir="ltr">
+                {fmt(total - wasted)}
+              </p>
+              <p className="text-xs text-muted">{t("time.productive")}</p>
             </div>
             <div>
-              <p className="text-lg font-semibold">{fmt(wasted)}</p>
-              <p className="text-xs text-muted">Entertainment</p>
+              <p className="text-lg font-semibold" dir="ltr">
+                {fmt(wasted)}
+              </p>
+              <p className="text-xs text-muted">{tc("Entertainment")}</p>
             </div>
           </div>
 
@@ -236,12 +249,14 @@ function Summary() {
             {byCategory.map(([cat, secs]) => (
               <li key={cat} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span>{cat}</span>
-                  <span className="text-muted">{fmt(secs)}</span>
+                  <span>{tc(cat)}</span>
+                  <span className="text-muted" dir="ltr">
+                    {fmt(secs)}
+                  </span>
                 </div>
                 <Bar
                   value={Math.round((100 * secs) / max)}
-                  label={`${cat} time`}
+                  label={t("time.categoryTime", { cat: tc(cat) })}
                 />
               </li>
             ))}
@@ -253,6 +268,7 @@ function Summary() {
 }
 
 function Recent() {
+  const { t, tc } = useT();
   const { entries, removeEntry } = useApp();
   if (!entries.length) return null;
   return (
@@ -265,14 +281,16 @@ function Recent() {
               <span className="block text-xs text-muted">{x.note}</span>
             )}
           </span>
-          <Badge>{x.category}</Badge>
-          <span className="text-sm text-muted">{x.date}</span>
-          <span className="w-16 text-right text-sm font-medium">
+          <Badge>{tc(x.category)}</Badge>
+          <span className="text-sm text-muted" dir="ltr">
+            {x.date}
+          </span>
+          <span className="w-16 text-end text-sm font-medium" dir="ltr">
             {fmt(x.seconds)}
           </span>
           <button
             onClick={() => removeEntry(x.id)}
-            aria-label={`Delete ${x.title}`}
+            aria-label={t("common.deleteItem", { title: x.title })}
             className="text-muted hover:text-ink"
           >
             <Trash2 size={18} />
@@ -284,15 +302,14 @@ function Recent() {
 }
 
 export default function Time() {
+  const { t } = useT();
   const { entriesStatus, loadEntries } = useApp();
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Time Tracker</h1>
-        <p className="text-sm text-muted">
-          Track your time to see where it actually goes.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("nav.time")}</h1>
+        <p className="text-sm text-muted">{t("time.subtitle")}</p>
       </header>
 
       <Timer />
@@ -306,12 +323,10 @@ export default function Time() {
 
       {entriesStatus === "error" && (
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your tracked time.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("time.loadError")}</p>
           <button onClick={loadEntries} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}

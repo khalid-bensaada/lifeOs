@@ -1,18 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useApp, goalProgress } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Bar, Badge, fieldCls, btnCls } from "../components/ui";
 import { streaks } from "../utils/habits";
-import { LEVEL_NAMES, currentLevel, skillProgress } from "../utils/skills";
+import { currentLevel, skillProgress } from "../utils/skills";
 import * as visionApi from "../services/vision";
 
 function Now({ status, items, empty, to, linkText, render }) {
+  const { t } = useT();
   return (
     <Card className="space-y-3 !p-4">
-      <h3 className="text-sm font-semibold">Right now</h3>
-      {status === "loading" && <p className="text-sm text-muted">Loading...</p>}
+      <h3 className="text-sm font-semibold">{t("direction.rightNow")}</h3>
+      {status === "loading" && (
+        <p className="text-sm text-muted">{t("common.loading")}</p>
+      )}
       {status === "error" && (
-        <p className="text-sm text-muted">We couldn&apos;t load this.</p>
+        <p className="text-sm text-muted">{t("direction.cantLoad")}</p>
       )}
       {status === "ready" && items.length === 0 && (
         <p className="text-sm text-muted">{empty}</p>
@@ -52,6 +56,7 @@ function Section({ label, hint, value, onChange, side }) {
 }
 
 export default function Direction() {
+  const { t } = useT();
   const {
     goals,
     goalsStatus,
@@ -109,11 +114,8 @@ export default function Direction() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Life Direction</h1>
-        <p className="text-sm text-muted">
-          Where you are going gives every task a reason. Write it once, then
-          come back to it.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("nav.direction")}</h1>
+        <p className="text-sm text-muted">{t("direction.subtitle")}</p>
       </header>
 
       {status === "loading" && (
@@ -126,12 +128,10 @@ export default function Direction() {
 
       {status === "error" && (
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your direction.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("direction.loadError")}</p>
           <button onClick={load} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}
@@ -139,26 +139,28 @@ export default function Direction() {
       {status === "ready" && (
         <form onSubmit={submit} className="space-y-6">
           <Section
-            label="1 year vision"
-            hint="Where do I want to be in one year?"
+            label={t("direction.oneYear")}
+            hint={t("direction.oneYearHint")}
             value={form.oneYear}
             onChange={set("oneYear")}
             side={
               <Now
                 status={goalsStatus}
                 items={activeGoals}
-                empty="No active goals yet."
+                empty={t("direction.noGoals")}
                 to="/goals"
-                linkText="Open goals"
+                linkText={t("direction.openGoals")}
                 render={(g) => (
                   <li key={g.id} className="space-y-1">
                     <div className="flex items-baseline justify-between gap-2 text-sm">
                       <span>{g.title}</span>
-                      <span className="text-muted">{goalProgress(g)}%</span>
+                      <span className="text-muted" dir="ltr">
+                        {goalProgress(g)}%
+                      </span>
                     </div>
                     <Bar
                       value={goalProgress(g)}
-                      label={`${g.title} progress`}
+                      label={t("common.progressOf", { title: g.title })}
                     />
                   </li>
                 )}
@@ -167,24 +169,24 @@ export default function Direction() {
           />
 
           <Section
-            label="3 year vision"
-            hint="Where do I want to be in three years?"
+            label={t("direction.threeYear")}
+            hint={t("direction.threeYearHint")}
             value={form.threeYear}
             onChange={set("threeYear")}
           />
 
           <Section
-            label="Skills"
-            hint="What skills do I need?"
+            label={t("nav.skills")}
+            hint={t("direction.skillsHint")}
             value={form.skills}
             onChange={set("skills")}
             side={
               <Now
                 status={skillsStatus}
                 items={skills}
-                empty="No skills yet."
+                empty={t("direction.noSkills")}
                 to="/skills"
-                linkText="Open skills"
+                linkText={t("direction.openSkills")}
                 render={(k) => {
                   const level = currentLevel(k);
                   return (
@@ -193,13 +195,16 @@ export default function Direction() {
                         <span>{k.name}</span>
                         <Badge>
                           {level.mastered
-                            ? "All levels complete"
-                            : `Level ${level.index + 1} · ${LEVEL_NAMES[level.index]}`}
+                            ? t("skills.allComplete")
+                            : t("skills.levelBadge", {
+                                n: level.index + 1,
+                                name: t(`level.${level.index + 1}`),
+                              })}
                         </Badge>
                       </div>
                       <Bar
                         value={skillProgress(k)}
-                        label={`${k.name} progress`}
+                        label={t("common.progressOf", { title: k.name })}
                       />
                     </li>
                   );
@@ -209,24 +214,24 @@ export default function Direction() {
           />
 
           <Section
-            label="Projects"
-            hint="What must I build?"
+            label={t("nav.projects")}
+            hint={t("direction.projectsHint")}
             value={form.projects}
             onChange={set("projects")}
             side={
               <Now
                 status={projectsStatus}
                 items={openProjects}
-                empty="No projects in progress."
+                empty={t("direction.noProjects")}
                 to="/projects"
-                linkText="Open projects"
+                linkText={t("direction.openProjects")}
                 render={(p) => (
                   <li
                     key={p.id}
                     className="flex items-center justify-between gap-2 text-sm"
                   >
                     <span>{p.title}</span>
-                    <Badge>{p.status.replace("_", " ")}</Badge>
+                    <Badge>{t(`projectStatus.${p.status}`)}</Badge>
                   </li>
                 )}
               />
@@ -234,17 +239,17 @@ export default function Direction() {
           />
 
           <Section
-            label="Habits"
-            hint="What behaviors must become normal?"
+            label={t("nav.habits")}
+            hint={t("direction.habitsHint")}
             value={form.habits}
             onChange={set("habits")}
             side={
               <Now
                 status={habitsStatus}
                 items={habits}
-                empty="No habits yet."
+                empty={t("direction.noHabits")}
                 to="/habits"
-                linkText="Open habits"
+                linkText={t("direction.openHabits")}
                 render={(h) => (
                   <li
                     key={h.id}
@@ -252,7 +257,11 @@ export default function Direction() {
                   >
                     <span>{h.name}</span>
                     <span className="text-muted">
-                      {streaks(h.logs).current}d streak
+                      {t("direction.streak", {
+                        n: t("common.daysShort", {
+                          n: streaks(h.logs).current,
+                        }),
+                      })}
                     </span>
                   </li>
                 )}
@@ -271,11 +280,11 @@ export default function Direction() {
               disabled={saving}
               className={`${btnCls} disabled:opacity-60`}
             >
-              {saving ? "Saving..." : "Save direction"}
+              {saving ? t("common.saving") : t("direction.save")}
             </button>
             {saved && (
               <p role="status" className="text-sm text-accent">
-                Direction saved.
+                {t("direction.saved")}
               </p>
             )}
           </div>

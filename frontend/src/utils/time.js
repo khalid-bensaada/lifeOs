@@ -1,11 +1,23 @@
 import { daysAgo } from "./dates";
 
+const UNITS = {
+  en: { h: "h", m: "m", s: "s" },
+  ar: { h: "س", m: "د", s: "ث" },
+  fr: { h: "h", m: "min", s: "s" },
+};
+
+let units = UNITS.en;
+
+export const setDurationLanguage = (language) => {
+  units = UNITS[language] || UNITS.en;
+};
+
 export const fmt = (s) => {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (h) return `${h}h ${m}m`;
-  if (m) return `${m}m`;
-  return `${s}s`;
+  if (h) return `${h}${units.h} ${m}${units.m}`;
+  if (m) return `${m}${units.m}`;
+  return `${s}${units.s}`;
 };
 
 export const clock = (s) =>

@@ -2,19 +2,23 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Pencil, Trash2, Check, X, Play } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Empty, Badge, fieldCls, btnCls } from "../components/ui";
 import { todayISO, addDays, fromISO } from "../utils/dates";
 import { focusSeconds, fmt } from "../utils/time";
 
-const Retry = ({ text, onRetry }) => (
-  <div className="rounded-xl border border-dashed border-line p-8 text-center">
-    <p className="font-medium">Something went wrong.</p>
-    <p className="mt-1 text-sm text-muted">{text}</p>
-    <button onClick={onRetry} className={`${btnCls} mt-4`}>
-      Try again
-    </button>
-  </div>
-);
+const Retry = ({ text, onRetry }) => {
+  const { t } = useT();
+  return (
+    <div className="rounded-xl border border-dashed border-line p-8 text-center">
+      <p className="font-medium">{t("common.somethingWrong")}</p>
+      <p className="mt-1 text-sm text-muted">{text}</p>
+      <button onClick={onRetry} className={`${btnCls} mt-4`}>
+        {t("common.tryAgain")}
+      </button>
+    </div>
+  );
+};
 
 const Skeleton = ({ height = "h-40" }) => (
   <div
@@ -24,6 +28,7 @@ const Skeleton = ({ height = "h-40" }) => (
 );
 
 function Priorities() {
+  const { t } = useT();
   const {
     tasks,
     tasksStatus,
@@ -37,9 +42,11 @@ function Priorities() {
   } = useApp();
   const [title, setTitle] = useState("");
 
-  const planned = tasks.filter((t) => t.today);
+  const planned = tasks.filter((task) => task.today);
   const open = tasks
-    .filter((t) => !t.today && !["completed", "skipped"].includes(t.status))
+    .filter(
+      (task) => !task.today && !["completed", "skipped"].includes(task.status),
+    )
     .slice(0, 8);
   const full = todayCount >= dailyLimit;
 
@@ -47,7 +54,8 @@ function Priorities() {
     (r) => r.date === addDays(todayISO(), -1),
   );
   const hint = yesterday?.tomorrowFirst;
-  const hintTaken = !hint || tasks.some((t) => t.title === hint && t.today);
+  const hintTaken =
+    !hint || tasks.some((task) => task.title === hint && task.today);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -69,15 +77,15 @@ function Priorities() {
   return (
     <Card className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="font-semibold">Today&apos;s priorities</h2>
-        <span className="text-sm text-muted">
+        <h2 className="font-semibold">{t("today.priorities")}</h2>
+        <span className="text-sm text-muted" dir="ltr">
           {todayCount} / {dailyLimit}
         </span>
       </div>
 
       {tasksStatus === "loading" && <Skeleton height="h-32" />}
       {tasksStatus === "error" && (
-        <Retry text="We couldn't load your tasks." onRetry={loadTasks} />
+        <Retry text={t("tasks.loadError")} onRetry={loadTasks} />
       )}
 
       {tasksStatus === "ready" && (
@@ -85,9 +93,7 @@ function Priorities() {
           {!hintTaken && (
             <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line px-3 py-2 text-sm">
               <span>
-                <span className="text-muted">
-                  Your first priority from last night:{" "}
-                </span>
+                <span className="text-muted">{t("today.hint")} </span>
                 {hint}
               </span>
               <button
@@ -95,52 +101,50 @@ function Priorities() {
                 disabled={full}
                 className="text-accent hover:underline disabled:opacity-50"
               >
-                Add to today
+                {t("today.addToToday")}
               </button>
             </div>
           )}
 
           {planned.length === 0 ? (
-            <Empty
-              title="What are your 3 most important tasks?"
-              text="Pick the few things that matter most today."
-            />
+            <Empty title={t("today.emptyTitle")} text={t("today.emptyText")} />
           ) : (
             <ul className="space-y-1">
-              {planned.map((t) => (
+              {planned.map((task) => (
                 <li
-                  key={t.id}
+                  key={task.id}
                   className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-line/40"
                 >
                   <input
                     type="checkbox"
-                    aria-label={`Complete ${t.title}`}
-                    checked={t.status === "completed"}
+                    aria-label={t("tasks.complete", { title: task.title })}
+                    checked={task.status === "completed"}
                     onChange={() =>
-                      updateTask(t.id, {
-                        status: t.status === "completed" ? "todo" : "completed",
+                      updateTask(task.id, {
+                        status:
+                          task.status === "completed" ? "todo" : "completed",
                       })
                     }
                     className="size-4 accent-[var(--accent)]"
                   />
                   <span
-                    className={`min-w-0 flex-1 ${t.status === "completed" ? "text-muted line-through" : ""}`}
+                    className={`min-w-0 flex-1 ${task.status === "completed" ? "text-muted line-through" : ""}`}
                   >
-                    {t.title}
+                    {task.title}
                   </span>
-                  {t.status !== "completed" && (
+                  {task.status !== "completed" && (
                     <Link
-                      to={`/focus?task=${t.id}`}
-                      aria-label={`Focus on ${t.title}`}
+                      to={`/focus?task=${task.id}`}
+                      aria-label={t("today.focusOn", { title: task.title })}
                       className="text-muted hover:text-accent"
                     >
                       <Play size={16} />
                     </Link>
                   )}
-                  <Badge>{t.est} min</Badge>
+                  <Badge>{t("common.minutes", { n: task.est })}</Badge>
                   <button
-                    onClick={() => toggleToday(t.id)}
-                    aria-label={`Remove ${t.title} from today`}
+                    onClick={() => toggleToday(task.id)}
+                    aria-label={t("today.removeFrom", { title: task.title })}
                     className="text-muted hover:text-ink"
                   >
                     <X size={16} />
@@ -152,40 +156,34 @@ function Priorities() {
 
           <form onSubmit={submit} className="flex gap-2">
             <input
-              aria-label="New priority"
+              aria-label={t("today.newPriority")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               disabled={full}
-              placeholder={
-                full
-                  ? "Today is full. Remove one first."
-                  : "Add a priority for today"
-              }
+              placeholder={full ? t("today.full") : t("today.addPlaceholder")}
               className={`${fieldCls} min-w-0 flex-1 disabled:opacity-60`}
             />
             <button disabled={full} className={`${btnCls} disabled:opacity-60`}>
               <Plus size={16} aria-hidden="true" />
-              Add
+              {t("common.add")}
             </button>
           </form>
 
           {open.length > 0 && !full && (
             <div className="space-y-2">
-              <p className="text-sm text-muted">
-                Or pick from your open tasks:
-              </p>
+              <p className="text-sm text-muted">{t("today.pickOpen")}</p>
               <div
                 className="flex flex-wrap gap-2"
                 role="group"
-                aria-label="Open tasks"
+                aria-label={t("today.openTasks")}
               >
-                {open.map((t) => (
+                {open.map((task) => (
                   <button
-                    key={t.id}
-                    onClick={() => toggleToday(t.id)}
+                    key={task.id}
+                    onClick={() => toggleToday(task.id)}
                     className="rounded-full border border-line px-3 py-1 text-sm text-muted hover:border-accent hover:text-accent"
                   >
-                    {t.title}
+                    {task.title}
                   </button>
                 ))}
               </div>
@@ -198,6 +196,7 @@ function Priorities() {
 }
 
 function Schedule() {
+  const { t } = useT();
   const {
     events,
     eventsStatus,
@@ -243,19 +242,19 @@ function Schedule() {
 
   return (
     <Card className="space-y-4">
-      <h2 className="font-semibold">Schedule</h2>
+      <h2 className="font-semibold">{t("today.schedule")}</h2>
 
       {eventsStatus === "loading" && <Skeleton height="h-32" />}
       {eventsStatus === "error" && (
-        <Retry text="We couldn't load your schedule." onRetry={loadEvents} />
+        <Retry text={t("today.scheduleError")} onRetry={loadEvents} />
       )}
 
       {eventsStatus === "ready" && (
         <>
           {list.length === 0 ? (
             <Empty
-              title="Nothing scheduled"
-              text="Block time for the things that matter."
+              title={t("today.nothingScheduled")}
+              text={t("today.nothingScheduledText")}
             />
           ) : (
             <ul className="divide-y divide-line">
@@ -266,20 +265,20 @@ function Schedule() {
                     className="flex flex-wrap items-center gap-2 py-2"
                   >
                     <input
-                      aria-label="Event title"
+                      aria-label={t("today.eventTitle")}
                       value={edit.title}
                       onChange={setField("title")}
                       className={`${fieldCls} min-w-0 flex-1`}
                     />
                     <input
-                      aria-label="Start time"
+                      aria-label={t("today.startTime")}
                       type="time"
                       value={edit.start}
                       onChange={setField("start")}
                       className={fieldCls}
                     />
                     <input
-                      aria-label="End time"
+                      aria-label={t("today.endTime")}
                       type="time"
                       value={edit.end}
                       onChange={setField("end")}
@@ -287,14 +286,14 @@ function Schedule() {
                     />
                     <button
                       onClick={saveEdit}
-                      aria-label="Save changes"
+                      aria-label={t("today.saveChanges")}
                       className="text-accent"
                     >
                       <Check size={18} />
                     </button>
                     <button
                       onClick={() => setEdit(null)}
-                      aria-label="Cancel"
+                      aria-label={t("common.cancel")}
                       className="text-muted hover:text-ink"
                     >
                       <X size={18} />
@@ -305,10 +304,10 @@ function Schedule() {
                     key={ev.id}
                     className="flex items-center gap-3 py-2 text-sm"
                   >
-                    <span className="w-28 shrink-0 text-muted">
+                    <span className="w-28 shrink-0 text-muted" dir="ltr">
                       {ev.start
                         ? `${ev.start}${ev.end ? `–${ev.end}` : ""}`
-                        : "Any time"}
+                        : t("today.anyTime")}
                     </span>
                     <span className="min-w-0 flex-1">{ev.title}</span>
                     <button
@@ -320,14 +319,14 @@ function Schedule() {
                           end: ev.end,
                         })
                       }
-                      aria-label={`Edit ${ev.title}`}
+                      aria-label={t("common.editItem", { title: ev.title })}
                       className="text-muted hover:text-ink"
                     >
                       <Pencil size={16} />
                     </button>
                     <button
                       onClick={() => removeEvent(ev.id)}
-                      aria-label={`Delete ${ev.title}`}
+                      aria-label={t("common.deleteItem", { title: ev.title })}
                       className="text-muted hover:text-ink"
                     >
                       <Trash2 size={16} />
@@ -343,21 +342,21 @@ function Schedule() {
             className="flex flex-wrap gap-2 border-t border-line pt-4"
           >
             <input
-              aria-label="New block title"
+              aria-label={t("today.newBlock")}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Add a block (Gym, Programming...)"
+              placeholder={t("today.blockPlaceholder")}
               className={`${fieldCls} min-w-0 flex-1`}
             />
             <input
-              aria-label="Start time"
+              aria-label={t("today.startTime")}
               type="time"
               value={start}
               onChange={(e) => setStart(e.target.value)}
               className={fieldCls}
             />
             <input
-              aria-label="End time"
+              aria-label={t("today.endTime")}
               type="time"
               value={end}
               onChange={(e) => setEnd(e.target.value)}
@@ -365,7 +364,7 @@ function Schedule() {
             />
             <button className={btnCls}>
               <Plus size={16} aria-hidden="true" />
-              Add
+              {t("common.add")}
             </button>
           </form>
         </>
@@ -376,12 +375,15 @@ function Schedule() {
 
 const Stat = ({ label, value }) => (
   <div>
-    <p className="text-lg font-semibold">{value}</p>
+    <p className="text-lg font-semibold" dir="ltr">
+      {value}
+    </p>
     <p className="text-xs text-muted">{label}</p>
   </div>
 );
 
 function DayReviewForm() {
+  const { t } = useT();
   const { tasks, habits, entries, dailyReviews, saveDailyReview } = useApp();
   const date = todayISO();
   const existing = dailyReviews.find((r) => r.date === date);
@@ -394,8 +396,8 @@ function DayReviewForm() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const planned = tasks.filter((t) => t.today);
-  const done = planned.filter((t) => t.status === "completed").length;
+  const planned = tasks.filter((task) => task.today);
+  const done = planned.filter((task) => task.status === "completed").length;
   const habitsDone = habits.filter((h) => h.logs.includes(date)).length;
   const focus = focusSeconds(entries, 0, 1);
 
@@ -414,17 +416,23 @@ function DayReviewForm() {
 
   return (
     <Card className="space-y-5">
-      <h2 className="font-semibold">Day review</h2>
+      <h2 className="font-semibold">{t("today.dayReview")}</h2>
 
       <div className="grid grid-cols-3 gap-3 text-center">
-        <Stat label="Priorities done" value={`${done} / ${planned.length}`} />
-        <Stat label="Focus time" value={fmt(focus)} />
-        <Stat label="Habits" value={`${habitsDone} / ${habits.length}`} />
+        <Stat
+          label={t("today.prioritiesDone")}
+          value={`${done} / ${planned.length}`}
+        />
+        <Stat label={t("dashboard.focusTime")} value={fmt(focus)} />
+        <Stat
+          label={t("nav.habits")}
+          value={`${habitsDone} / ${habits.length}`}
+        />
       </div>
 
       <form onSubmit={submit} className="space-y-4">
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium">What went well?</span>
+          <span className="text-sm font-medium">{t("today.wentWell")}</span>
           <textarea
             rows={3}
             value={form.wentWell}
@@ -433,9 +441,7 @@ function DayReviewForm() {
           />
         </label>
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium">
-            What should I improve tomorrow?
-          </span>
+          <span className="text-sm font-medium">{t("today.improve")}</span>
           <textarea
             rows={3}
             value={form.improve}
@@ -445,7 +451,7 @@ function DayReviewForm() {
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">
-            Tomorrow&apos;s first priority
+            {t("today.tomorrowFirst")}
           </span>
           <input
             value={form.tomorrowFirst}
@@ -456,11 +462,15 @@ function DayReviewForm() {
 
         <div className="flex items-center gap-4">
           <button disabled={saving} className={`${btnCls} disabled:opacity-60`}>
-            {saving ? "Saving..." : existing ? "Update review" : "Save review"}
+            {saving
+              ? t("common.saving")
+              : existing
+                ? t("common.updateReview")
+                : t("common.saveReview")}
           </button>
           {saved && (
             <p role="status" className="text-sm text-accent">
-              Day review saved.
+              {t("today.reviewSaved")}
             </p>
           )}
         </div>
@@ -470,6 +480,7 @@ function DayReviewForm() {
 }
 
 function DayReview() {
+  const { t } = useT();
   const {
     tasksStatus,
     habitsStatus,
@@ -485,7 +496,7 @@ function DayReview() {
   if (statuses.includes("error")) {
     return (
       <Retry
-        text="We couldn't load the data for your day review."
+        text={t("today.reviewError")}
         onRetry={() => {
           loadTasks();
           loadHabits();
@@ -500,7 +511,8 @@ function DayReview() {
 }
 
 export default function Today() {
-  const longDate = fromISO(todayISO()).toLocaleDateString("en-GB", {
+  const { t, formatDate } = useT();
+  const longDate = formatDate(fromISO(todayISO()), {
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -510,9 +522,9 @@ export default function Today() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Today</h1>
+        <h1 className="text-2xl font-semibold">{t("nav.today")}</h1>
         <p className="text-sm text-muted">
-          {longDate}. Few priorities, done well.
+          {t("today.subtitle", { date: longDate })}
         </p>
       </header>
 

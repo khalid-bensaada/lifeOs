@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useApp, goalProgress } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Bar, Empty, Badge, fieldCls, btnCls } from "../components/ui";
 
 const CATEGORIES = [
@@ -32,6 +33,7 @@ function useAction() {
 }
 
 function GoalCard({ g }) {
+  const { t, tc } = useT();
   const { removeGoal, addMilestone, toggleMilestone } = useApp();
   const [ms, setMs] = useState("");
   const [error, run] = useAction();
@@ -48,14 +50,16 @@ function GoalCard({ g }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-semibold">{g.title}</h2>
-          <p className="mt-1 flex gap-2">
-            <Badge>{g.category}</Badge>
-            <Badge>Due {g.deadline || "no date"}</Badge>
+          <p className="mt-1 flex flex-wrap gap-2">
+            <Badge>{tc(g.category)}</Badge>
+            <Badge>
+              {t("goals.due", { date: g.deadline || t("goals.noDate") })}
+            </Badge>
           </p>
         </div>
         <button
           onClick={() => run(() => removeGoal(g.id))}
-          aria-label={`Delete ${g.title}`}
+          aria-label={t("common.deleteItem", { title: g.title })}
           className="text-muted hover:text-ink"
         >
           <Trash2 size={18} />
@@ -63,8 +67,10 @@ function GoalCard({ g }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <Bar value={p} label={`${g.title} progress`} />
-        <span className="text-sm text-muted">{p}%</span>
+        <Bar value={p} label={t("common.progressOf", { title: g.title })} />
+        <span className="text-sm text-muted" dir="ltr">
+          {p}%
+        </span>
       </div>
 
       <ul className="space-y-1">
@@ -87,13 +93,13 @@ function GoalCard({ g }) {
 
       <form onSubmit={submit} className="flex gap-2">
         <input
-          aria-label="New milestone"
+          aria-label={t("goals.newMilestone")}
           value={ms}
           onChange={(e) => setMs(e.target.value)}
-          placeholder="Add a milestone"
+          placeholder={t("goals.milestonePlaceholder")}
           className={`${fieldCls} min-w-0 flex-1`}
         />
-        <button className={btnCls}>Add</button>
+        <button className={btnCls}>{t("common.add")}</button>
       </form>
 
       {error && (
@@ -106,6 +112,7 @@ function GoalCard({ g }) {
 }
 
 export default function Goals() {
+  const { t, tc } = useT();
   const { goals, goalsStatus, loadGoals, addGoal } = useApp();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Programming");
@@ -127,32 +134,32 @@ export default function Goals() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Goals</h1>
-        <p className="text-sm text-muted">
-          Progress is calculated from completed milestones.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("nav.goals")}</h1>
+        <p className="text-sm text-muted">{t("goals.subtitle")}</p>
       </header>
 
       <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
-          aria-label="Goal title"
+          aria-label={t("goals.titleLabel")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="What do you want to achieve?"
+          placeholder={t("goals.placeholder")}
           className={`${fieldCls} min-w-0 flex-1`}
         />
         <select
-          aria-label="Category"
+          aria-label={t("common.category")}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           className={fieldCls}
         >
           {CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
+            <option key={c} value={c}>
+              {tc(c)}
+            </option>
           ))}
         </select>
         <input
-          aria-label="Deadline"
+          aria-label={t("common.deadline")}
           type="date"
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
@@ -160,7 +167,7 @@ export default function Goals() {
         />
         <button className={btnCls}>
           <Plus size={16} aria-hidden="true" />
-          Add goal
+          {t("goals.addGoal")}
         </button>
       </form>
 
@@ -180,22 +187,17 @@ export default function Goals() {
 
       {goalsStatus === "error" && (
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your goals.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("goals.loadError")}</p>
           <button onClick={loadGoals} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}
 
       {goalsStatus === "ready" &&
         (goals.length === 0 ? (
-          <Empty
-            title="No goals yet"
-            text="What do you want to achieve? Create your first goal above."
-          />
+          <Empty title={t("goals.empty")} text={t("goals.emptyText")} />
         ) : (
           <div className="grid gap-5 lg:grid-cols-2">
             {goals.map((g) => (

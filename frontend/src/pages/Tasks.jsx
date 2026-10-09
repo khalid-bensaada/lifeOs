@@ -1,18 +1,14 @@
 import { useState } from "react";
 import { Plus, Star, Trash2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Empty, Badge, fieldCls, btnCls } from "../components/ui";
 
-const STATUS = {
-  todo: "Todo",
-  in_progress: "In progress",
-  completed: "Completed",
-  skipped: "Skipped",
-};
-
-const PRIORITY = ["low", "medium", "high", "critical"];
+const STATUSES = ["todo", "in_progress", "completed", "skipped"];
+const PRIORITIES = ["low", "medium", "high", "critical"];
 
 export default function Tasks() {
+  const { t } = useT();
   const {
     tasks,
     tasksStatus,
@@ -39,39 +35,41 @@ export default function Tasks() {
     }
   };
 
-  const list = tasks.filter((t) => filter === "all" || t.status === filter);
+  const list = tasks.filter(
+    (task) => filter === "all" || task.status === filter,
+  );
 
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Tasks</h1>
+        <h1 className="text-2xl font-semibold">{t("nav.tasks")}</h1>
         <p className="text-sm text-muted">
-          {todayCount} / {dailyLimit} marked as today&apos;s priorities.
+          {t("tasks.subtitle", { count: todayCount, limit: dailyLimit })}
         </p>
       </header>
 
       <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
-          aria-label="Task title"
+          aria-label={t("tasks.titleLabel")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="What needs to be done?"
+          placeholder={t("tasks.placeholder")}
           className={`${fieldCls} min-w-0 flex-1`}
         />
         <select
-          aria-label="Priority"
+          aria-label={t("tasks.priorityLabel")}
           value={priority}
           onChange={(e) => setPriority(e.target.value)}
           className={fieldCls}
         >
-          {PRIORITY.map((p) => (
+          {PRIORITIES.map((p) => (
             <option key={p} value={p}>
-              {p}
+              {t(`priority.${p}`)}
             </option>
           ))}
         </select>
         <input
-          aria-label="Due date"
+          aria-label={t("tasks.dueLabel")}
           type="date"
           value={due}
           onChange={(e) => setDue(e.target.value)}
@@ -79,16 +77,16 @@ export default function Tasks() {
         />
         <button className={btnCls}>
           <Plus size={16} aria-hidden="true" />
-          Add task
+          {t("tasks.addTask")}
         </button>
       </form>
 
       <div
         className="flex flex-wrap gap-2"
         role="group"
-        aria-label="Filter by status"
+        aria-label={t("tasks.filterLabel")}
       >
-        {["all", ...Object.keys(STATUS)].map((s) => (
+        {["all", ...STATUSES].map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
@@ -99,7 +97,7 @@ export default function Tasks() {
                 : "border-line text-muted"
             }`}
           >
-            {s === "all" ? "All" : STATUS[s]}
+            {s === "all" ? t("common.all") : t(`status.${s}`)}
           </button>
         ))}
       </div>
@@ -114,70 +112,72 @@ export default function Tasks() {
 
       {tasksStatus === "error" && (
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your tasks.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("tasks.loadError")}</p>
           <button onClick={loadTasks} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}
 
       {tasksStatus === "ready" &&
         (list.length === 0 ? (
-          <Empty
-            title="No tasks here"
-            text="Add a task above to get started."
-          />
+          <Empty title={t("tasks.empty")} text={t("tasks.emptyText")} />
         ) : (
           <Card className="divide-y divide-line !p-0">
-            {list.map((t) => (
+            {list.map((task) => (
               <div
-                key={t.id}
+                key={task.id}
                 className="flex flex-wrap items-center gap-3 px-4 py-3"
               >
                 <input
                   type="checkbox"
-                  aria-label={`Complete ${t.title}`}
-                  checked={t.status === "completed"}
+                  aria-label={t("tasks.complete", { title: task.title })}
+                  checked={task.status === "completed"}
                   className="size-4 accent-[var(--accent)]"
                   onChange={() =>
-                    updateTask(t.id, {
-                      status: t.status === "completed" ? "todo" : "completed",
+                    updateTask(task.id, {
+                      status:
+                        task.status === "completed" ? "todo" : "completed",
                     })
                   }
                 />
                 <span
-                  className={`min-w-0 flex-1 ${t.status === "completed" ? "text-muted line-through" : ""}`}
+                  className={`min-w-0 flex-1 ${task.status === "completed" ? "text-muted line-through" : ""}`}
                 >
-                  {t.title}
+                  {task.title}
                 </span>
-                {t.due && <Badge>Due {t.due}</Badge>}
-                <Badge>{t.priority}</Badge>
+                {task.due && (
+                  <Badge>{t("tasks.due", { date: task.due })}</Badge>
+                )}
+                <Badge>{t(`priority.${task.priority}`)}</Badge>
                 <select
-                  aria-label={`Status of ${t.title}`}
-                  value={t.status}
-                  onChange={(e) => updateTask(t.id, { status: e.target.value })}
+                  aria-label={t("tasks.statusOf", { title: task.title })}
+                  value={task.status}
+                  onChange={(e) =>
+                    updateTask(task.id, { status: e.target.value })
+                  }
                   className={`${fieldCls} !py-1`}
                 >
-                  {Object.entries(STATUS).map(([k, v]) => (
-                    <option key={k} value={k}>
-                      {v}
+                  {STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {t(`status.${s}`)}
                     </option>
                   ))}
                 </select>
                 <button
-                  onClick={() => toggleToday(t.id)}
-                  aria-pressed={t.today}
-                  aria-label={t.today ? "Remove from today" : "Add to today"}
-                  className={t.today ? "text-accent" : "text-muted"}
+                  onClick={() => toggleToday(task.id)}
+                  aria-pressed={task.today}
+                  aria-label={
+                    task.today ? t("tasks.removeToday") : t("tasks.addToday")
+                  }
+                  className={task.today ? "text-accent" : "text-muted"}
                 >
-                  <Star size={18} fill={t.today ? "currentColor" : "none"} />
+                  <Star size={18} fill={task.today ? "currentColor" : "none"} />
                 </button>
                 <button
-                  onClick={() => removeTask(t.id)}
-                  aria-label={`Delete ${t.title}`}
+                  onClick={() => removeTask(task.id)}
+                  aria-label={t("common.deleteItem", { title: task.title })}
                   className="text-muted hover:text-ink"
                 >
                   <Trash2 size={18} />

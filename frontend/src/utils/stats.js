@@ -41,36 +41,11 @@ export function computeScore({ tasks, habits, entries, goals }, days) {
   const consistencyPart = active / days;
 
   const parts = [
-    {
-      label: "Tasks",
-      max: 25,
-      value: Math.round(25 * tasksPart),
-      hint: "Completed tasks out of all tasks",
-    },
-    {
-      label: "Habits",
-      max: 25,
-      value: Math.round(25 * habitsPart),
-      hint: "Habit days completed in this period",
-    },
-    {
-      label: "Focus time",
-      max: 25,
-      value: Math.round(25 * focusPart),
-      hint: "Focus hours against a goal of 2h per day",
-    },
-    {
-      label: "Goals",
-      max: 15,
-      value: Math.round(15 * goalsPart),
-      hint: "Average progress across your goals",
-    },
-    {
-      label: "Consistency",
-      max: 10,
-      value: Math.round(10 * consistencyPart),
-      hint: "Days with a focus session or a habit",
-    },
+    { key: "tasks", max: 25, value: Math.round(25 * tasksPart) },
+    { key: "habits", max: 25, value: Math.round(25 * habitsPart) },
+    { key: "focus", max: 25, value: Math.round(25 * focusPart) },
+    { key: "goals", max: 15, value: Math.round(15 * goalsPart) },
+    { key: "consistency", max: 10, value: Math.round(10 * consistencyPart) },
   ];
 
   return { total: parts.reduce((n, p) => n + p.value, 0), parts };

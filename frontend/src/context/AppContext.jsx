@@ -18,6 +18,7 @@ import * as eventsApi from "../services/events";
 import * as skillsApi from "../services/skills";
 import * as reviewsApi from "../services/reviews";
 import * as dailyApi from "../services/dailyReviews";
+import { translate } from "../i18n";
 
 const Ctx = createContext(null);
 export const useApp = () => useContext(Ctx);

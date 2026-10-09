@@ -1,19 +1,23 @@
 import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useApp, goalProgress } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Bar, Badge, Empty, btnCls } from "../components/ui";
 import { FOCUS, fmt } from "../utils/time";
 import { streaks } from "../utils/habits";
-import { LEVEL_NAMES, currentLevel, skillProgress } from "../utils/skills";
+import { currentLevel, skillProgress } from "../utils/skills";
 
 const Stat = ({ label, value }) => (
   <Card className="!p-4">
-    <p className="text-2xl font-semibold">{value}</p>
+    <p className="text-2xl font-semibold" dir="ltr">
+      {value}
+    </p>
     <p className="text-xs text-muted">{label}</p>
   </Card>
 );
 
 export default function Profile() {
+  const { t } = useT();
   const { user } = useAuth();
   const {
     goals,
@@ -64,7 +68,9 @@ export default function Profile() {
       </div>
       <div className="min-w-0">
         <h1 className="truncate text-2xl font-semibold">{user.name}</h1>
-        <p className="truncate text-sm text-muted">{user.email}</p>
+        <p className="truncate text-sm text-muted" dir="ltr">
+          {user.email}
+        </p>
       </div>
     </Card>
   );
@@ -74,12 +80,10 @@ export default function Profile() {
       <div className="space-y-6">
         {header}
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your profile data.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("profile.loadError")}</p>
           <button onClick={retry} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       </div>
@@ -110,7 +114,7 @@ export default function Profile() {
   const current = Math.max(0, ...habits.map((h) => streaks(h.logs).current));
   const best = Math.max(0, ...habits.map((h) => streaks(h.logs).best));
   const projectsDone = projects.filter((p) => p.status === "completed").length;
-  const tasksDone = tasks.filter((t) => t.status === "completed").length;
+  const tasksDone = tasks.filter((task) => task.status === "completed").length;
 
   const mainGoals = goals.filter((g) => g.status === "active").slice(0, 5);
   const learning = skills.filter((k) => !currentLevel(k).mastered);
@@ -120,25 +124,31 @@ export default function Profile() {
       {header}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-        <Stat label="Focus time (last 90 days)" value={fmt(focusTotal)} />
-        <Stat label="Current habit streak" value={`${current}d`} />
-        <Stat label="Best habit streak" value={`${best}d`} />
-        <Stat label="Projects completed" value={projectsDone} />
-        <Stat label="Tasks completed" value={tasksDone} />
+        <Stat label={t("profile.focus90")} value={fmt(focusTotal)} />
+        <Stat
+          label={t("profile.currentStreak")}
+          value={t("common.daysShort", { n: current })}
+        />
+        <Stat
+          label={t("profile.bestStreak")}
+          value={t("common.daysShort", { n: best })}
+        />
+        <Stat label={t("profile.projectsDone")} value={projectsDone} />
+        <Stat label={t("profile.tasksDone")} value={tasksDone} />
       </div>
 
       <div className="grid items-start gap-6 lg:grid-cols-2">
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Main goals</h2>
+            <h2 className="font-semibold">{t("profile.mainGoals")}</h2>
             <Link to="/goals" className="text-sm text-accent hover:underline">
-              Open goals
+              {t("profile.openGoals")}
             </Link>
           </div>
           {mainGoals.length === 0 ? (
             <Empty
-              title="No active goals"
-              text="Create a goal to give your days a direction."
+              title={t("profile.noActiveGoals")}
+              text={t("profile.noActiveGoalsText")}
             />
           ) : (
             <ul className="space-y-4">
@@ -146,9 +156,14 @@ export default function Profile() {
                 <li key={g.id} className="space-y-1.5">
                   <div className="flex items-baseline justify-between gap-2 text-sm">
                     <span>{g.title}</span>
-                    <span className="text-muted">{goalProgress(g)}%</span>
+                    <span className="text-muted" dir="ltr">
+                      {goalProgress(g)}%
+                    </span>
                   </div>
-                  <Bar value={goalProgress(g)} label={`${g.title} progress`} />
+                  <Bar
+                    value={goalProgress(g)}
+                    label={t("common.progressOf", { title: g.title })}
+                  />
                 </li>
               ))}
             </ul>
@@ -157,22 +172,22 @@ export default function Profile() {
 
         <Card className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Skills I am learning</h2>
+            <h2 className="font-semibold">{t("profile.learning")}</h2>
             <Link to="/skills" className="text-sm text-accent hover:underline">
-              Open skills
+              {t("profile.openSkills")}
             </Link>
           </div>
           {learning.length === 0 ? (
             <Empty
               title={
                 skills.length === 0
-                  ? "No skills yet"
-                  : "Every skill is complete"
+                  ? t("skills.empty")
+                  : t("profile.allSkillsDone")
               }
               text={
                 skills.length === 0
-                  ? "Add a skill you want to learn."
-                  : "Add a new skill to keep growing."
+                  ? t("profile.noSkillsText")
+                  : t("profile.addNewSkill")
               }
             />
           ) : (
@@ -184,12 +199,15 @@ export default function Profile() {
                     <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
                       <span>{k.name}</span>
                       <Badge>
-                        Level {level.index + 1} · {LEVEL_NAMES[level.index]}
+                        {t("skills.levelBadge", {
+                          n: level.index + 1,
+                          name: t(`level.${level.index + 1}`),
+                        })}
                       </Badge>
                     </div>
                     <Bar
                       value={skillProgress(k)}
-                      label={`${k.name} progress`}
+                      label={t("common.progressOf", { title: k.name })}
                     />
                   </li>
                 );

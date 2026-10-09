@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Empty, fieldCls, btnCls } from "../components/ui";
 import {
   todayISO,
@@ -9,36 +10,36 @@ import {
   addMonths,
   startOfWeek,
   monthGrid,
-  dayName,
 } from "../utils/dates";
 
 const KIND = {
-  event: { label: "Event", dot: "bg-violet-500", bar: "border-violet-500" },
-  task: { label: "Task", dot: "bg-blue-500", bar: "border-blue-500" },
+  event: {
+    key: "calendar.kind.event",
+    dot: "bg-violet-500",
+    bar: "border-violet-500",
+  },
+  task: {
+    key: "calendar.kind.task",
+    dot: "bg-blue-500",
+    bar: "border-blue-500",
+  },
   goal: {
-    label: "Goal deadline",
+    key: "calendar.kind.goal",
     dot: "bg-amber-500",
     bar: "border-amber-500",
   },
   habit: {
-    label: "Habit done",
+    key: "calendar.kind.habit",
     dot: "bg-emerald-500",
     bar: "border-emerald-500",
   },
 };
 
 const VIEWS = ["month", "week", "day"];
-const WEEK = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-const longDate = (iso) =>
-  fromISO(iso).toLocaleDateString("en-GB", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+const MONDAY = "2024-01-01";
 
 export default function Calendar() {
+  const { t, formatDate, shortDay } = useT();
   const {
     tasks,
     goals,
@@ -57,6 +58,18 @@ export default function Calendar() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
 
+  const longDate = (iso) =>
+    formatDate(fromISO(iso), {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+  const weekdays = Array.from({ length: 7 }, (_, i) =>
+    shortDay(addDays(MONDAY, i)),
+  );
+
   const itemsFor = (iso) => [
     ...events
       .filter((e) => e.date === iso)
@@ -68,12 +81,12 @@ export default function Calendar() {
         time: e.start ? `${e.start}${e.end ? `–${e.end}` : ""}` : "",
       })),
     ...tasks
-      .filter((t) => t.due === iso || (t.today && iso === today))
-      .map((t) => ({
-        id: t.id,
+      .filter((task) => task.due === iso || (task.today && iso === today))
+      .map((task) => ({
+        id: task.id,
         kind: "task",
-        label: t.title,
-        done: t.status === "completed",
+        label: task.title,
+        done: task.status === "completed",
       })),
     ...goals
       .filter((g) => g.deadline === iso)
@@ -120,12 +133,14 @@ export default function Calendar() {
 
   const label =
     view === "month"
-      ? fromISO(cursor).toLocaleDateString("en-GB", {
-          month: "long",
-          year: "numeric",
-        })
+      ? formatDate(fromISO(cursor), { month: "long", year: "numeric" })
       : view === "week"
-        ? `Week of ${fromISO(startOfWeek(cursor)).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`
+        ? t("calendar.weekOf", {
+            date: formatDate(fromISO(startOfWeek(cursor)), {
+              day: "numeric",
+              month: "short",
+            }),
+          })
         : longDate(selected);
 
   const cells = monthGrid(cursor);
@@ -138,67 +153,73 @@ export default function Calendar() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Calendar</h1>
+        <h1 className="text-2xl font-semibold">{t("nav.calendar")}</h1>
         <p className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
           {Object.values(KIND).map((k) => (
-            <span key={k.label} className="inline-flex items-center gap-1.5">
+            <span key={k.key} className="inline-flex items-center gap-1.5">
               <span
                 className={`size-2 rounded-full ${k.dot}`}
                 aria-hidden="true"
               />
-              {k.label}
+              {t(k.key)}
             </span>
           ))}
         </p>
       </header>
+
       {eventsStatus === "error" && (
         <div
           role="alert"
           className="flex items-center justify-between gap-3 rounded-lg border border-accent/40 bg-accent/10 px-4 py-3 text-sm"
         >
-          <span>We couldn&apos;t load your events.</span>
+          <span>{t("calendar.loadError")}</span>
           <button onClick={loadEvents} className="text-accent hover:underline">
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}
+
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <button
             onClick={() => move(-1)}
-            aria-label="Previous"
+            aria-label={t("calendar.previous")}
             className="rounded-lg border border-line p-2"
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={16} className="rtl:rotate-180" />
           </button>
           <button
             onClick={() => move(1)}
-            aria-label="Next"
+            aria-label={t("calendar.next")}
             className="rounded-lg border border-line p-2"
           >
-            <ChevronRight size={16} />
+            <ChevronRight size={16} className="rtl:rotate-180" />
           </button>
           <button
             onClick={goToday}
             className="rounded-lg border border-line px-3 py-1.5 text-sm"
           >
-            Today
+            {t("calendar.todayBtn")}
           </button>
-          <h2 className="ml-2 font-semibold">{label}</h2>
+          <h2 className="ms-2 font-semibold">{label}</h2>
         </div>
-        <div className="flex gap-2" role="group" aria-label="Calendar view">
+        <div
+          className="flex gap-2"
+          role="group"
+          aria-label={t("calendar.viewLabel")}
+        >
           {VIEWS.map((v) => (
             <button
               key={v}
               onClick={() => changeView(v)}
               aria-pressed={view === v}
-              className={`rounded-full border px-3 py-1 text-sm capitalize ${
+              className={`rounded-full border px-3 py-1 text-sm ${
                 view === v
                   ? "border-accent bg-accent/10 text-accent"
                   : "border-line text-muted"
               }`}
             >
-              {v}
+              {t(`calendar.view.${v}`)}
             </button>
           ))}
         </div>
@@ -207,8 +228,8 @@ export default function Calendar() {
       {view === "month" && (
         <Card className="!p-2 sm:!p-3">
           <div className="grid grid-cols-7 text-center text-xs text-muted">
-            {WEEK.map((d) => (
-              <div key={d} className="py-1">
+            {weekdays.map((d, i) => (
+              <div key={i} className="py-1">
                 {d}
               </div>
             ))}
@@ -222,8 +243,11 @@ export default function Calendar() {
                   key={iso}
                   onClick={() => setSelected(iso)}
                   aria-pressed={iso === selected}
-                  aria-label={`${longDate(iso)}, ${items.length} items`}
-                  className={`min-h-16 bg-card p-1.5 text-left sm:min-h-24 ${inMonth ? "" : "opacity-40"} ${
+                  aria-label={t("calendar.dayItems", {
+                    date: longDate(iso),
+                    count: items.length,
+                  })}
+                  className={`min-h-16 bg-card p-1.5 text-start sm:min-h-24 ${inMonth ? "" : "opacity-40"} ${
                     iso === selected ? "ring-2 ring-inset ring-accent" : ""
                   }`}
                 >
@@ -246,14 +270,14 @@ export default function Calendar() {
                     {items.slice(0, 2).map((i) => (
                       <span
                         key={`${i.kind}-${i.id}`}
-                        className={`block truncate border-l-2 pl-1 text-xs ${KIND[i.kind].bar}`}
+                        className={`block truncate border-s-2 ps-1 text-xs ${KIND[i.kind].bar}`}
                       >
                         {i.label}
                       </span>
                     ))}
                     {items.length > 2 && (
                       <span className="block text-xs text-muted">
-                        +{items.length - 2} more
+                        {t("calendar.more", { n: items.length - 2 })}
                       </span>
                     )}
                   </span>
@@ -275,22 +299,26 @@ export default function Calendar() {
               >
                 <button
                   onClick={() => setSelected(iso)}
-                  className="mb-2 w-full text-left text-sm font-medium"
+                  className="mb-2 w-full text-start text-sm font-medium"
                 >
-                  {dayName(iso)} {fromISO(iso).getDate()}
-                  {iso === today ? " (today)" : ""}
+                  {shortDay(iso)} {fromISO(iso).getDate()}
+                  {iso === today ? ` ${t("calendar.todayMark")}` : ""}
                 </button>
                 {items.length === 0 ? (
-                  <p className="text-xs text-muted">Nothing scheduled</p>
+                  <p className="text-xs text-muted">
+                    {t("calendar.nothingScheduled")}
+                  </p>
                 ) : (
                   <ul className="space-y-1">
                     {items.map((i) => (
                       <li
                         key={`${i.kind}-${i.id}`}
-                        className={`border-l-2 pl-2 text-xs ${KIND[i.kind].bar}`}
+                        className={`border-s-2 ps-2 text-xs ${KIND[i.kind].bar}`}
                       >
                         {i.time && (
-                          <span className="text-muted">{i.time} </span>
+                          <span className="text-muted" dir="ltr">
+                            {i.time}{" "}
+                          </span>
                         )}
                         {i.label}
                       </li>
@@ -308,8 +336,8 @@ export default function Calendar() {
 
         {dayItems.length === 0 ? (
           <Empty
-            title="Nothing scheduled"
-            text="Add an event for this day below."
+            title={t("calendar.nothingScheduled")}
+            text={t("calendar.nothingText")}
           />
         ) : (
           <ul className="divide-y divide-line">
@@ -323,18 +351,22 @@ export default function Calendar() {
                   aria-hidden="true"
                 />
                 <span className="w-28 shrink-0 text-muted">
-                  {KIND[i.kind].label}
+                  {t(KIND[i.kind].key)}
                 </span>
                 <span
                   className={`min-w-0 flex-1 ${i.done ? "text-muted line-through" : ""}`}
                 >
                   {i.label}
                 </span>
-                {i.time && <span className="text-muted">{i.time}</span>}
+                {i.time && (
+                  <span className="text-muted" dir="ltr">
+                    {i.time}
+                  </span>
+                )}
                 {i.kind === "event" && (
                   <button
                     onClick={() => removeEvent(i.id)}
-                    aria-label={`Delete ${i.label}`}
+                    aria-label={t("common.deleteItem", { title: i.label })}
                     className="text-muted hover:text-ink"
                   >
                     <Trash2 size={16} />
@@ -350,21 +382,21 @@ export default function Calendar() {
           className="flex flex-wrap gap-2 border-t border-line pt-4"
         >
           <input
-            aria-label="Event title"
+            aria-label={t("today.eventTitle")}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Add an event"
+            placeholder={t("calendar.addEventPlaceholder")}
             className={`${fieldCls} min-w-0 flex-1`}
           />
           <input
-            aria-label="Start time"
+            aria-label={t("today.startTime")}
             type="time"
             value={start}
             onChange={(e) => setStart(e.target.value)}
             className={fieldCls}
           />
           <input
-            aria-label="End time"
+            aria-label={t("today.endTime")}
             type="time"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
@@ -372,7 +404,7 @@ export default function Calendar() {
           />
           <button className={btnCls}>
             <Plus size={16} aria-hidden="true" />
-            Add event
+            {t("calendar.addEvent")}
           </button>
         </form>
       </Card>

@@ -1,51 +1,46 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Badge, Empty, fieldCls, btnCls } from "../components/ui";
 import { fromISO, addDays, startOfWeek, todayISO } from "../utils/dates";
 import { fmt } from "../utils/time";
 import { weekStats } from "../utils/review";
 
-const QUESTIONS = [
-  ["wentWell", "What went well?"],
-  ["wentBad", "What went badly?"],
-  ["wasted", "What wasted my time?"],
-  ["learned", "What did I learn?"],
-  ["change", "What should I change next week?"],
-];
+const QUESTIONS = ["wentWell", "wentBad", "wasted", "learned", "change"];
 
 const MAX = 5;
 
-const rangeLabel = (w) => {
+const rangeLabel = (formatDate, weekStart) => {
   const f = (iso) =>
-    fromISO(iso).toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-    });
-  return `${f(w)} – ${f(addDays(w, 6))}`;
+    formatDate(fromISO(iso), { day: "numeric", month: "short" });
+  return `${f(weekStart)} – ${f(addDays(weekStart, 6))}`;
 };
 
 const Stat = ({ label, value }) => (
   <div>
-    <p className="text-lg font-semibold">{value}</p>
+    <p className="text-lg font-semibold" dir="ltr">
+      {value}
+    </p>
     <p className="text-xs text-muted">{label}</p>
   </div>
 );
 
-const StatsGrid = ({ s }) => (
-  <div className="grid grid-cols-2 gap-4 text-center sm:grid-cols-3">
-    <Stat label="Productivity" value={s.score} />
-    <Stat label="Focus time" value={fmt(s.focus)} />
-    <Stat label="Tasks" value={`${s.tasksDone} / ${s.tasksTotal}`} />
-    <Stat label="Habits" value={`${s.habits}%`} />
-    <Stat
-      label="Gym"
-      value={`${s.workouts} ${s.workouts === 1 ? "session" : "sessions"}`}
-    />
-    <Stat label="Learning" value={fmt(s.learning)} />
-  </div>
-);
+function StatsGrid({ s }) {
+  const { t } = useT();
+  return (
+    <div className="grid grid-cols-2 gap-4 text-center sm:grid-cols-3">
+      <Stat label={t("review.productivity")} value={s.score} />
+      <Stat label={t("dashboard.focusTime")} value={fmt(s.focus)} />
+      <Stat label={t("nav.tasks")} value={`${s.tasksDone} / ${s.tasksTotal}`} />
+      <Stat label={t("nav.habits")} value={`${s.habits}%`} />
+      <Stat label={t("review.gym")} value={s.workouts} />
+      <Stat label={t("review.learning")} value={fmt(s.learning)} />
+    </div>
+  );
+}
 
 function ReviewForm() {
+  const { t, formatDate } = useT();
   const { tasks, habits, entries, goals, reviews, saveReview } = useApp();
   const week = startOfWeek(todayISO());
   const existing = reviews.find((r) => r.weekStart === week);
@@ -60,7 +55,7 @@ function ReviewForm() {
   const [saving, setSaving] = useState(false);
 
   const open = tasks.filter(
-    (t) => !["completed", "skipped"].includes(t.status),
+    (task) => !["completed", "skipped"].includes(task.status),
   );
 
   const toggle = (title) => {
@@ -76,9 +71,9 @@ function ReviewForm() {
 
   const addCustom = (e) => {
     e.preventDefault();
-    const t = custom.trim();
-    if (!t) return;
-    toggle(t);
+    const text = custom.trim();
+    if (!text) return;
+    toggle(text);
     setCustom("");
   };
 
@@ -98,23 +93,24 @@ function ReviewForm() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Weekly Review</h1>
+        <h1 className="text-2xl font-semibold">{t("nav.review")}</h1>
         <p className="text-sm text-muted">
-          Week of {rangeLabel(week)}. Look back, then decide what to change.
-          Nothing here is required.
+          {t("review.subtitle", { range: rangeLabel(formatDate, week) })}
         </p>
       </header>
 
       <Card className="space-y-4">
-        <h2 className="font-semibold">Your last 7 days</h2>
+        <h2 className="font-semibold">{t("review.last7")}</h2>
         <StatsGrid s={stats} />
       </Card>
 
       <form onSubmit={submit} className="space-y-6">
         <Card className="space-y-4">
-          {QUESTIONS.map(([key, question]) => (
+          {QUESTIONS.map((key) => (
             <label key={key} className="block space-y-1.5">
-              <span className="text-sm font-medium">{question}</span>
+              <span className="text-sm font-medium">
+                {t(`review.q.${key}`)}
+              </span>
               <textarea
                 rows={3}
                 value={answers[key] || ""}
@@ -130,8 +126,8 @@ function ReviewForm() {
 
         <Card className="space-y-4">
           <div className="flex items-baseline justify-between">
-            <h2 className="font-semibold">Priorities for next week</h2>
-            <span className="text-sm text-muted">
+            <h2 className="font-semibold">{t("review.priorities")}</h2>
+            <span className="text-sm text-muted" dir="ltr">
               {priorities.length} / {MAX}
             </span>
           </div>
@@ -147,7 +143,7 @@ function ReviewForm() {
                   <button
                     type="button"
                     onClick={() => toggle(p)}
-                    aria-label={`Remove ${p}`}
+                    aria-label={t("common.removeItem", { title: p })}
                     className="font-medium"
                   >
                     ×
@@ -159,25 +155,25 @@ function ReviewForm() {
 
           {open.length > 0 && (
             <div className="space-y-2">
-              <p className="text-sm text-muted">Pick from your open tasks:</p>
+              <p className="text-sm text-muted">{t("review.pickOpen")}</p>
               <div
                 className="flex flex-wrap gap-2"
                 role="group"
-                aria-label="Open tasks"
+                aria-label={t("today.openTasks")}
               >
-                {open.map((t) => (
+                {open.map((task) => (
                   <button
                     type="button"
-                    key={t.id}
-                    onClick={() => toggle(t.title)}
-                    aria-pressed={priorities.includes(t.title)}
+                    key={task.id}
+                    onClick={() => toggle(task.title)}
+                    aria-pressed={priorities.includes(task.title)}
                     className={`rounded-full border px-3 py-1 text-sm ${
-                      priorities.includes(t.title)
+                      priorities.includes(task.title)
                         ? "border-accent bg-accent/10 text-accent"
                         : "border-line text-muted"
                     }`}
                   >
-                    {t.title}
+                    {task.title}
                   </button>
                 ))}
               </div>
@@ -186,45 +182,44 @@ function ReviewForm() {
 
           <div className="flex gap-2">
             <input
-              aria-label="Custom priority"
+              aria-label={t("review.customLabel")}
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") addCustom(e);
               }}
-              placeholder="Or write your own priority"
+              placeholder={t("review.customPlaceholder")}
               className={`${fieldCls} min-w-0 flex-1`}
             />
             <button type="button" onClick={addCustom} className={btnCls}>
-              Add
+              {t("common.add")}
             </button>
           </div>
           {priorities.length >= MAX && (
-            <p className="text-sm text-muted">
-              Five is the limit. Remove one to add another.
-            </p>
+            <p className="text-sm text-muted">{t("review.limitNote")}</p>
           )}
         </Card>
 
         <div className="flex items-center gap-4">
           <button disabled={saving} className={`${btnCls} disabled:opacity-60`}>
-            {saving ? "Saving..." : existing ? "Update review" : "Save review"}
+            {saving
+              ? t("common.saving")
+              : existing
+                ? t("common.updateReview")
+                : t("common.saveReview")}
           </button>
           {saved && (
             <p role="status" className="text-sm text-accent">
-              Review saved.
+              {t("review.saved")}
             </p>
           )}
         </div>
       </form>
 
       <Card className="space-y-3">
-        <h2 className="font-semibold">Past reviews</h2>
+        <h2 className="font-semibold">{t("review.past")}</h2>
         {reviews.length === 0 ? (
-          <Empty
-            title="No reviews yet"
-            text="Your first review will appear here once you save it."
-          />
+          <Empty title={t("review.noPast")} text={t("review.noPastText")} />
         ) : (
           reviews.map((r) => (
             <details
@@ -232,22 +227,22 @@ function ReviewForm() {
               className="rounded-lg border border-line px-3 py-2"
             >
               <summary className="cursor-pointer text-sm font-medium">
-                {rangeLabel(r.weekStart)}{" "}
+                {rangeLabel(formatDate, r.weekStart)}{" "}
                 <span className="font-normal text-muted">
-                  · score {r.stats.score}
+                  · {t("review.score", { n: r.stats.score })}
                 </span>
                 {r.weekStart === week && (
                   <>
                     {" "}
-                    <Badge>This week</Badge>
+                    <Badge>{t("review.thisWeek")}</Badge>
                   </>
                 )}
               </summary>
               <div className="mt-3 space-y-4">
                 <StatsGrid s={r.stats} />
-                {QUESTIONS.filter(([k]) => r.answers[k]).map(([k, q]) => (
+                {QUESTIONS.filter((k) => r.answers[k]).map((k) => (
                   <div key={k}>
-                    <p className="text-sm font-medium">{q}</p>
+                    <p className="text-sm font-medium">{t(`review.q.${k}`)}</p>
                     <p className="whitespace-pre-wrap text-sm text-muted">
                       {r.answers[k]}
                     </p>
@@ -256,9 +251,9 @@ function ReviewForm() {
                 {r.priorities.length > 0 && (
                   <div>
                     <p className="text-sm font-medium">
-                      Priorities for next week
+                      {t("review.priorities")}
                     </p>
-                    <ul className="list-disc pl-5 text-sm text-muted">
+                    <ul className="list-disc ps-5 text-sm text-muted">
                       {r.priorities.map((p) => (
                         <li key={p}>{p}</li>
                       ))}
@@ -275,6 +270,7 @@ function ReviewForm() {
 }
 
 export default function Review() {
+  const { t } = useT();
   const {
     reviewsStatus,
     tasksStatus,
@@ -307,12 +303,10 @@ export default function Review() {
   if (statuses.includes("error")) {
     return (
       <div className="rounded-xl border border-dashed border-line p-10 text-center">
-        <p className="font-medium">Something went wrong.</p>
-        <p className="mt-1 text-sm text-muted">
-          We couldn&apos;t load the data for your review.
-        </p>
+        <p className="font-medium">{t("common.somethingWrong")}</p>
+        <p className="mt-1 text-sm text-muted">{t("review.loadError")}</p>
         <button onClick={retry} className={`${btnCls} mt-4`}>
-          Try again
+          {t("common.tryAgain")}
         </button>
       </div>
     );

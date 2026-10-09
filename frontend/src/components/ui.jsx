@@ -1,11 +1,11 @@
-// بطاقة عامة
+import { useT } from "../i18n/useT";
+
 export const Card = ({ className = "", children }) => (
   <section className={`rounded-xl border border-line bg-card p-5 ${className}`}>
     {children}
   </section>
 );
 
-// شريط التقدم (مع aria لقارئات الشاشة)
 export const Bar = ({ value, label }) => (
   <div
     role="progressbar"
@@ -22,17 +22,17 @@ export const Bar = ({ value, label }) => (
   </div>
 );
 
-// دائرة التقدم
 export function Ring({ value, size = 96 }) {
+  const { t } = useT();
   const r = 40;
-  const c = 2 * Math.PI * r; // محيط الدائرة
+  const c = 2 * Math.PI * r;
   return (
     <svg
       width={size}
       height={size}
       viewBox="0 0 100 100"
       role="img"
-      aria-label={`${value}% complete`}
+      aria-label={t("ui.complete", { value })}
     >
       <circle
         cx="50"
@@ -68,7 +68,6 @@ export function Ring({ value, size = 96 }) {
   );
 }
 
-// حالة فارغة (بدل الشاشة البيضاء)
 export const Empty = ({ title, text }) => (
   <div className="rounded-xl border border-dashed border-line p-10 text-center">
     <p className="font-medium">{title}</p>
@@ -76,14 +75,12 @@ export const Empty = ({ title, text }) => (
   </div>
 );
 
-// وسم صغير (الأولوية، المدة، الفئة...)
 export const Badge = ({ children }) => (
   <span className="rounded-md border border-line px-2 py-0.5 text-xs text-muted">
     {children}
   </span>
 );
 
-// أنماط جاهزة للحقول والأزرار
 export const fieldCls =
   "rounded-lg border border-line bg-card px-3 py-2 text-sm";
 export const btnCls =

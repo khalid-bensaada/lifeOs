@@ -6,6 +6,7 @@ import {
   useState,
 } from "react";
 import { useAuth } from "./AuthContext";
+import { setDurationLanguage } from "../utils/time";
 import * as settingsApi from "../services/settings";
 
 const Ctx = createContext(null);
@@ -43,6 +44,8 @@ export function SettingsProvider({ children }) {
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
   const [systemDark, setSystemDark] = useState(() => darkQuery().matches);
+
+  setDurationLanguage(settings.language);
 
   useEffect(() => {
     const media = darkQuery();

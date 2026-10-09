@@ -2,59 +2,62 @@ import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Badge, Empty, fieldCls, btnCls } from "../components/ui";
 import { addDays, fromISO } from "../utils/dates";
 import * as notesApi from "../services/notes";
 
-const TYPES = {
-  goal: { label: "Goal", plural: "goals", to: "/goals" },
-  project: { label: "Project", plural: "projects", to: "/projects" },
-  skill: { label: "Skill", plural: "skills", to: "/skills" },
-  task: { label: "Task", plural: "tasks", to: "/tasks" },
-  review: { label: "Weekly review", plural: "weekly reviews", to: "/review" },
+const TYPE_ROUTES = {
+  goal: "/goals",
+  project: "/projects",
+  skill: "/skills",
+  task: "/tasks",
+  review: "/review",
 };
 
 const FILTERS = [
-  ["all", "All"],
-  ["none", "Unattached"],
-  ["goal", "Goals"],
-  ["project", "Projects"],
-  ["skill", "Skills"],
-  ["task", "Tasks"],
-  ["review", "Reviews"],
+  ["all", "common.all"],
+  ["none", "notes.unattached"],
+  ["goal", "nav.goals"],
+  ["project", "nav.projects"],
+  ["skill", "nav.skills"],
+  ["task", "nav.tasks"],
+  ["review", "notes.filter.review"],
 ];
-
-const weekLabel = (weekStart) => {
-  const f = (iso) =>
-    fromISO(iso).toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "short",
-    });
-  return `Week of ${f(weekStart)} – ${f(addDays(weekStart, 6))}`;
-};
 
 const asAttachment = (type, target) =>
   type && target ? { type, id: Number(target) } : null;
 
 function useOptions() {
+  const { t, formatDate } = useT();
   const { goals, projects, skills, tasks, reviews } = useApp();
+
+  const weekLabel = (weekStart) => {
+    const f = (iso) =>
+      formatDate(fromISO(iso), { day: "numeric", month: "short" });
+    return t("calendar.weekOf", {
+      date: `${f(weekStart)} – ${f(addDays(weekStart, 6))}`,
+    });
+  };
+
   return {
     goal: goals.map((g) => [g.id, g.title]),
     project: projects.map((p) => [p.id, p.title]),
     skill: skills.map((k) => [k.id, k.name]),
-    task: tasks.map((t) => [t.id, t.title]),
+    task: tasks.map((task) => [task.id, task.title]),
     review: reviews.map((r) => [r.id, weekLabel(r.weekStart)]),
   };
 }
 
 function AttachPicker({ type, target, onType, onTarget }) {
+  const { t } = useT();
   const options = useOptions();
   const list = type ? options[type] : [];
 
   return (
     <>
       <select
-        aria-label="Attach to"
+        aria-label={t("notes.attachTo")}
         value={type}
         onChange={(e) => {
           onType(e.target.value);
@@ -62,25 +65,23 @@ function AttachPicker({ type, target, onType, onTarget }) {
         }}
         className={fieldCls}
       >
-        <option value="">No attachment</option>
-        {Object.entries(TYPES).map(([key, t]) => (
+        <option value="">{t("notes.noAttachment")}</option>
+        {Object.keys(TYPE_ROUTES).map((key) => (
           <option key={key} value={key}>
-            {t.label}
+            {t(`notes.type.${key}`)}
           </option>
         ))}
       </select>
 
       {type && (
         <select
-          aria-label="Item"
+          aria-label={t("notes.item")}
           value={target}
           onChange={(e) => onTarget(e.target.value)}
           className={`${fieldCls} min-w-0 max-w-full`}
         >
           <option value="">
-            {list.length
-              ? `Choose a ${TYPES[type].label.toLowerCase()}`
-              : `No ${TYPES[type].plural} yet`}
+            {list.length ? t("notes.chooseItem") : t("notes.noItems")}
           </option>
           {list.map(([key, label]) => (
             <option key={key} value={key}>
@@ -94,6 +95,7 @@ function AttachPicker({ type, target, onType, onTarget }) {
 }
 
 function NoteCard({ note, onSave, onDelete }) {
+  const { t } = useT();
   const options = useOptions();
   const [edit, setEdit] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -101,7 +103,7 @@ function NoteCard({ note, onSave, onDelete }) {
   const attachment = note.attachment;
   const label = attachment
     ? options[attachment.type].find(([id]) => id === attachment.id)?.[1] ||
-      TYPES[attachment.type].label
+      t(`notes.type.${attachment.type}`)
     : null;
 
   const startEdit = () =>
@@ -130,7 +132,7 @@ function NoteCard({ note, onSave, onDelete }) {
     return (
       <Card className="space-y-3 !p-4">
         <textarea
-          aria-label="Edit note"
+          aria-label={t("notes.editNote")}
           rows={4}
           value={edit.body}
           onChange={(e) => setEdit((s) => ({ ...s, body: e.target.value }))}
@@ -146,14 +148,14 @@ function NoteCard({ note, onSave, onDelete }) {
           <button
             onClick={save}
             disabled={saving}
-            aria-label="Save note"
+            aria-label={t("notes.saveNote")}
             className="ms-auto text-accent disabled:opacity-60"
           >
             <Check size={18} />
           </button>
           <button
             onClick={() => setEdit(null)}
-            aria-label="Cancel"
+            aria-label={t("common.cancel")}
             className="text-muted hover:text-ink"
           >
             <X size={18} />
@@ -168,25 +170,28 @@ function NoteCard({ note, onSave, onDelete }) {
       <p className="whitespace-pre-wrap text-sm">{note.body}</p>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         {attachment ? (
-          <Link to={TYPES[attachment.type].to} className="hover:text-accent">
+          <Link to={TYPE_ROUTES[attachment.type]} className="hover:text-accent">
             <Badge>
-              {TYPES[attachment.type].label}: {label}
+              {t("notes.attachedBadge", {
+                type: t(`notes.type.${attachment.type}`),
+                label,
+              })}
             </Badge>
           </Link>
         ) : (
-          <Badge>Unattached</Badge>
+          <Badge>{t("notes.unattached")}</Badge>
         )}
-        <span>{note.createdAt.slice(0, 10)}</span>
+        <span dir="ltr">{note.createdAt.slice(0, 10)}</span>
         <button
           onClick={startEdit}
-          aria-label="Edit note"
+          aria-label={t("notes.editNote")}
           className="ms-auto hover:text-ink"
         >
           <Pencil size={16} />
         </button>
         <button
           onClick={() => onDelete(note.id)}
-          aria-label="Delete note"
+          aria-label={t("notes.deleteNote")}
           className="hover:text-ink"
         >
           <Trash2 size={16} />
@@ -197,6 +202,7 @@ function NoteCard({ note, onSave, onDelete }) {
 }
 
 export default function Notes() {
+  const { t } = useT();
   const [notes, setNotes] = useState([]);
   const [status, setStatus] = useState("loading");
   const [error, setError] = useState("");
@@ -235,7 +241,7 @@ export default function Notes() {
     e.preventDefault();
     if (!body.trim()) return;
     if (type && !target) {
-      setError("Choose the item to attach to, or select No attachment.");
+      setError(t("notes.chooseError"));
       return;
     }
     setSaving(true);
@@ -256,7 +262,7 @@ export default function Notes() {
 
   const save = (id, patch, edit) => {
     if (edit.type && !edit.target) {
-      setError("Choose the item to attach to, or select No attachment.");
+      setError(t("notes.chooseError"));
       return false;
     }
     return run(async () => {
@@ -280,21 +286,19 @@ export default function Notes() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Notes</h1>
-        <p className="text-sm text-muted">
-          Short notes, kept next to the things they belong to.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("nav.notes")}</h1>
+        <p className="text-sm text-muted">{t("notes.subtitle")}</p>
       </header>
 
       <Card>
         <form onSubmit={submit} className="space-y-3">
           <textarea
-            aria-label="New note"
+            aria-label={t("notes.newNote")}
             rows={3}
             maxLength={5000}
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder="Write a note"
+            placeholder={t("notes.writePlaceholder")}
             className={`${fieldCls} w-full`}
           />
           <div className="flex flex-wrap items-center gap-2">
@@ -309,7 +313,7 @@ export default function Notes() {
               className={`${btnCls} ms-auto disabled:opacity-60`}
             >
               <Plus size={16} aria-hidden="true" />
-              {saving ? "Saving..." : "Add note"}
+              {saving ? t("common.saving") : t("notes.addNote")}
             </button>
           </div>
         </form>
@@ -324,9 +328,9 @@ export default function Notes() {
       <div
         className="flex flex-wrap gap-2"
         role="group"
-        aria-label="Filter notes"
+        aria-label={t("notes.filterLabel")}
       >
-        {FILTERS.map(([key, text]) => (
+        {FILTERS.map(([key, labelKey]) => (
           <button
             key={key}
             onClick={() => setFilter(key)}
@@ -337,7 +341,7 @@ export default function Notes() {
                 : "border-line text-muted"
             }`}
           >
-            {text}
+            {t(labelKey)}
           </button>
         ))}
       </div>
@@ -352,12 +356,10 @@ export default function Notes() {
 
       {status === "error" && (
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your notes.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("notes.loadError")}</p>
           <button onClick={load} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}
@@ -365,11 +367,11 @@ export default function Notes() {
       {status === "ready" &&
         (visible.length === 0 ? (
           <Empty
-            title={notes.length === 0 ? "No notes yet" : "No notes here"}
+            title={notes.length === 0 ? t("notes.empty") : t("notes.noneHere")}
             text={
               notes.length === 0
-                ? "Write your first note above."
-                : "Try another filter."
+                ? t("notes.emptyText")
+                : t("notes.noneHereText")
             }
           />
         ) : (

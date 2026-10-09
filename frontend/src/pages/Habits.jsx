@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { Check, Plus, Trash2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Empty, Badge, fieldCls, btnCls } from "../components/ui";
-import { lastDays, dayName, todayISO } from "../utils/dates";
+import { lastDays, todayISO } from "../utils/dates";
 import { streaks, rate } from "../utils/habits";
 
 const CATEGORIES = [
@@ -18,12 +19,15 @@ const CATEGORIES = [
 
 const Stat = ({ label, value }) => (
   <div>
-    <p className="text-lg font-semibold">{value}</p>
+    <p className="text-lg font-semibold" dir="ltr">
+      {value}
+    </p>
     <p className="text-xs text-muted">{label}</p>
   </div>
 );
 
 function HabitCard({ h }) {
+  const { t, tc, shortDay } = useT();
   const { toggleHabitLog, removeHabit } = useApp();
   const week = lastDays(7);
   const set = new Set(h.logs);
@@ -35,11 +39,11 @@ function HabitCard({ h }) {
       <div className="flex items-start justify-between gap-3">
         <div className="space-y-1">
           <h2 className="font-semibold">{h.name}</h2>
-          <Badge>{h.category}</Badge>
+          <Badge>{tc(h.category)}</Badge>
         </div>
         <button
           onClick={() => removeHabit(h.id)}
-          aria-label={`Delete ${h.name}`}
+          aria-label={t("common.deleteItem", { title: h.name })}
           className="text-muted hover:text-ink"
         >
           <Trash2 size={18} />
@@ -51,11 +55,11 @@ function HabitCard({ h }) {
           const done = set.has(d);
           return (
             <div key={d} className="text-center">
-              <span className="text-xs text-muted">{dayName(d)}</span>
+              <span className="text-xs text-muted">{shortDay(d)}</span>
               <button
                 onClick={() => toggleHabitLog(h.id, d)}
                 aria-pressed={done}
-                aria-label={`${h.name} on ${d}`}
+                aria-label={t("habits.onDay", { name: h.name, date: d })}
                 className={`mt-1 h-9 w-full rounded-lg border ${
                   done
                     ? "border-accent bg-accent text-white"
@@ -70,16 +74,23 @@ function HabitCard({ h }) {
       </div>
 
       <div className="grid grid-cols-4 gap-2 border-t border-line pt-4 text-center">
-        <Stat label="Current streak" value={`${current}d`} />
-        <Stat label="Best streak" value={`${best}d`} />
-        <Stat label="This week" value={`${weekDone}/7`} />
-        <Stat label="Last 30 days" value={`${rate(h.logs, 30)}%`} />
+        <Stat
+          label={t("habits.currentStreak")}
+          value={t("common.daysShort", { n: current })}
+        />
+        <Stat
+          label={t("habits.bestStreak")}
+          value={t("common.daysShort", { n: best })}
+        />
+        <Stat label={t("habits.thisWeek")} value={`${weekDone}/7`} />
+        <Stat label={t("habits.last30")} value={`${rate(h.logs, 30)}%`} />
       </div>
     </Card>
   );
 }
 
 export default function Habits() {
+  const { t, tc } = useT();
   const { habits, habitsStatus, loadHabits, addHabit } = useApp();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Programming");
@@ -97,34 +108,35 @@ export default function Habits() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Habits</h1>
+        <h1 className="text-2xl font-semibold">{t("nav.habits")}</h1>
         <p className="text-sm text-muted">
-          {doneToday} / {habits.length} completed today. Missing one day does
-          not break your streak.
+          {t("habits.subtitle", { done: doneToday, total: habits.length })}
         </p>
       </header>
 
       <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
-          aria-label="Habit name"
+          aria-label={t("habits.nameLabel")}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Which habit do you want to build?"
+          placeholder={t("habits.placeholder")}
           className={`${fieldCls} min-w-0 flex-1`}
         />
         <select
-          aria-label="Category"
+          aria-label={t("common.category")}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           className={fieldCls}
         >
           {CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
+            <option key={c} value={c}>
+              {tc(c)}
+            </option>
           ))}
         </select>
         <button className={btnCls}>
           <Plus size={16} aria-hidden="true" />
-          Add habit
+          {t("habits.addHabit")}
         </button>
       </form>
 
@@ -138,22 +150,17 @@ export default function Habits() {
 
       {habitsStatus === "error" && (
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your habits.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("habits.loadError")}</p>
           <button onClick={loadHabits} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}
 
       {habitsStatus === "ready" &&
         (habits.length === 0 ? (
-          <Empty
-            title="No habits yet"
-            text="Start with one small habit you can repeat every day."
-          />
+          <Empty title={t("habits.empty")} text={t("habits.emptyText")} />
         ) : (
           <div className="grid gap-5 lg:grid-cols-2">
             {habits.map((h) => (

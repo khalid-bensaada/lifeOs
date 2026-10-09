@@ -1,13 +1,9 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Bar, Badge, Empty, fieldCls, btnCls } from "../components/ui";
-import {
-  LEVEL_NAMES,
-  skillProgress,
-  levelComplete,
-  currentLevel,
-} from "../utils/skills";
+import { skillProgress, levelComplete, currentLevel } from "../utils/skills";
 
 const CATEGORIES = [
   "Programming",
@@ -20,6 +16,7 @@ const CATEGORIES = [
 ];
 
 function AddLine({ label, placeholder, onAdd }) {
+  const { t } = useT();
   const [text, setText] = useState("");
 
   const submit = async (e) => {
@@ -38,7 +35,7 @@ function AddLine({ label, placeholder, onAdd }) {
         placeholder={placeholder}
         className={`${fieldCls} min-w-0 flex-1 !py-1.5`}
       />
-      <button className={btnCls} aria-label={`Add: ${label}`}>
+      <button className={btnCls} aria-label={t("skills.addAria", { label })}>
         <Plus size={16} aria-hidden="true" />
       </button>
     </form>
@@ -46,6 +43,7 @@ function AddLine({ label, placeholder, onAdd }) {
 }
 
 function SkillCard({ k }) {
+  const { t, tc } = useT();
   const {
     removeSkill,
     addSkillMilestone,
@@ -56,6 +54,7 @@ function SkillCard({ k }) {
   const p = skillProgress(k);
   const cur = currentLevel(k);
   const practiceDone = k.projects.filter((x) => x.done).length;
+  const levelName = (n) => t(`level.${n}`);
 
   return (
     <Card className="space-y-4">
@@ -63,17 +62,20 @@ function SkillCard({ k }) {
         <div className="space-y-1.5">
           <h2 className="text-lg font-semibold">{k.name}</h2>
           <p className="flex flex-wrap gap-2">
-            <Badge>{k.category}</Badge>
+            <Badge>{tc(k.category)}</Badge>
             <Badge>
               {cur.mastered
-                ? "All levels complete"
-                : `Level ${cur.index + 1} · ${LEVEL_NAMES[cur.index]}`}
+                ? t("skills.allComplete")
+                : t("skills.levelBadge", {
+                    n: cur.index + 1,
+                    name: levelName(cur.index + 1),
+                  })}
             </Badge>
           </p>
         </div>
         <button
           onClick={() => removeSkill(k.id)}
-          aria-label={`Delete ${k.name}`}
+          aria-label={t("common.deleteItem", { title: k.name })}
           className="text-muted hover:text-ink"
         >
           <Trash2 size={18} />
@@ -81,64 +83,76 @@ function SkillCard({ k }) {
       </div>
 
       <div className="flex items-center gap-3">
-        <Bar value={p} label={`${k.name} progress`} />
-        <span className="text-sm text-muted">{p}%</span>
+        <Bar value={p} label={t("common.progressOf", { title: k.name })} />
+        <span className="text-sm text-muted" dir="ltr">
+          {p}%
+        </span>
       </div>
 
       <div className="space-y-2">
-        {k.levels.map((l, i) => (
-          <details
-            key={i}
-            open={!cur.mastered && i === cur.index}
-            className="rounded-lg border border-line px-3 py-2"
-          >
-            <summary className="cursor-pointer text-sm font-medium">
-              Level {i + 1} · {LEVEL_NAMES[i]}{" "}
-              <span className="font-normal text-muted">
-                ({l.milestones.filter((m) => m.done).length}/
-                {l.milestones.length}
-                {levelComplete(l) ? " · Complete" : ""})
-              </span>
-            </summary>
-            <ul className="mt-2 space-y-1">
-              {l.milestones.map((m) => (
-                <li key={m.id}>
-                  <label className="flex cursor-pointer items-center gap-3 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={m.done}
-                      onChange={() => toggleSkillMilestone(k.id, i, m.id)}
-                      className="size-4 accent-[var(--accent)]"
-                    />
-                    <span className={m.done ? "text-muted line-through" : ""}>
-                      {m.title}
-                    </span>
-                  </label>
-                </li>
-              ))}
-            </ul>
-            <div className="mt-2">
-              <AddLine
-                label={`New milestone for ${k.name} level ${i + 1}`}
-                placeholder="Add a milestone"
-                onAdd={(t) => addSkillMilestone(k.id, i, t)}
-              />
-            </div>
-          </details>
-        ))}
+        {k.levels.map((l, i) => {
+          const counts = {
+            done: l.milestones.filter((m) => m.done).length,
+            total: l.milestones.length,
+          };
+          return (
+            <details
+              key={i}
+              open={!cur.mastered && i === cur.index}
+              className="rounded-lg border border-line px-3 py-2"
+            >
+              <summary className="cursor-pointer text-sm font-medium">
+                {t("skills.levelTitle", { n: i + 1, name: levelName(i + 1) })}{" "}
+                <span className="font-normal text-muted">
+                  {levelComplete(l)
+                    ? t("skills.levelCountComplete", counts)
+                    : t("skills.levelCount", counts)}
+                </span>
+              </summary>
+              <ul className="mt-2 space-y-1">
+                {l.milestones.map((m) => (
+                  <li key={m.id}>
+                    <label className="flex cursor-pointer items-center gap-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={m.done}
+                        onChange={() => toggleSkillMilestone(k.id, i, m.id)}
+                        className="size-4 accent-[var(--accent)]"
+                      />
+                      <span className={m.done ? "text-muted line-through" : ""}>
+                        {m.title}
+                      </span>
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2">
+                <AddLine
+                  label={t("skills.newMilestoneFor", {
+                    name: k.name,
+                    n: i + 1,
+                  })}
+                  placeholder={t("skills.addMilestonePlaceholder")}
+                  onAdd={(text) => addSkillMilestone(k.id, i, text)}
+                />
+              </div>
+            </details>
+          );
+        })}
       </div>
 
       <div className="space-y-2 border-t border-line pt-4">
         <h3 className="flex justify-between text-sm font-semibold">
-          Learning path
+          {t("skills.learningPath")}
           <span className="font-normal text-muted">
-            {practiceDone} / {k.projects.length} projects
+            {t("skills.projectsCount", {
+              done: practiceDone,
+              total: k.projects.length,
+            })}
           </span>
         </h3>
         {k.projects.length === 0 && (
-          <p className="text-xs text-muted">
-            Add practical projects that make you use this skill.
-          </p>
+          <p className="text-xs text-muted">{t("skills.pathEmpty")}</p>
         )}
         <ol className="space-y-1">
           {k.projects.map((x, i) => (
@@ -158,9 +172,9 @@ function SkillCard({ k }) {
           ))}
         </ol>
         <AddLine
-          label={`New practice project for ${k.name}`}
-          placeholder="Add a practice project"
-          onAdd={(t) => addPractice(k.id, t)}
+          label={t("skills.newPracticeFor", { name: k.name })}
+          placeholder={t("skills.addPracticePlaceholder")}
+          onAdd={(text) => addPractice(k.id, text)}
         />
       </div>
     </Card>
@@ -168,6 +182,7 @@ function SkillCard({ k }) {
 }
 
 export default function Skills() {
+  const { t, tc } = useT();
   const { skills, skillsStatus, loadSkills, addSkill } = useApp();
   const [name, setName] = useState("");
   const [category, setCategory] = useState("Programming");
@@ -182,34 +197,33 @@ export default function Skills() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Skills</h1>
-        <p className="text-sm text-muted">
-          Your level comes from the milestones you complete. You cannot type a
-          percentage.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("nav.skills")}</h1>
+        <p className="text-sm text-muted">{t("skills.subtitle")}</p>
       </header>
 
       <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
-          aria-label="Skill name"
+          aria-label={t("skills.nameLabel")}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Which skill do you want to learn?"
+          placeholder={t("skills.placeholder")}
           className={`${fieldCls} min-w-0 flex-1`}
         />
         <select
-          aria-label="Category"
+          aria-label={t("common.category")}
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           className={fieldCls}
         >
           {CATEGORIES.map((c) => (
-            <option key={c}>{c}</option>
+            <option key={c} value={c}>
+              {tc(c)}
+            </option>
           ))}
         </select>
         <button className={btnCls}>
           <Plus size={16} aria-hidden="true" />
-          Add skill
+          {t("skills.addSkill")}
         </button>
       </form>
 
@@ -223,22 +237,17 @@ export default function Skills() {
 
       {skillsStatus === "error" && (
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your skills.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("skills.loadError")}</p>
           <button onClick={loadSkills} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}
 
       {skillsStatus === "ready" &&
         (skills.length === 0 ? (
-          <Empty
-            title="No skills yet"
-            text="Add a skill, then break each level into milestones."
-          />
+          <Empty title={t("skills.empty")} text={t("skills.emptyText")} />
         ) : (
           <div className="grid items-start gap-5 lg:grid-cols-2">
             {skills.map((k) => (

@@ -1,19 +1,22 @@
 import { useState } from "react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Bar, Empty } from "../components/ui";
-import { lastDays, dayName, todayISO } from "../utils/dates";
+import { lastDays, todayISO } from "../utils/dates";
 import { fmt, FOCUS } from "../utils/time";
 import { rate, streaks } from "../utils/habits";
 import { computeScore, focusByDay } from "../utils/stats";
 
 const RANGES = [
-  { days: 7, label: "Last 7 days" },
-  { days: 30, label: "Last 30 days" },
+  { days: 7, labelKey: "time.last7" },
+  { days: 30, labelKey: "time.last30" },
 ];
 
 const Stat = ({ label, value }) => (
   <div>
-    <p className="text-lg font-semibold">{value}</p>
+    <p className="text-lg font-semibold" dir="ltr">
+      {value}
+    </p>
     <p className="text-xs text-muted">{label}</p>
   </div>
 );
@@ -21,6 +24,7 @@ const Stat = ({ label, value }) => (
 const sum = (list) => list.reduce((n, x) => n + x.seconds, 0);
 
 export default function Statistics() {
+  const { t, tc, shortDay } = useT();
   const { tasks, habits, entries, goals } = useApp();
   const [days, setDays] = useState(7);
 
@@ -40,12 +44,14 @@ export default function Statistics() {
   const max = Math.max(...chart.map((c) => c.seconds), 1);
 
   const today = todayISO();
-  const count = (s) => tasks.filter((t) => t.status === s).length;
+  const count = (s) => tasks.filter((task) => task.status === s).length;
   const overdue = tasks.filter(
-    (t) =>
-      t.due && t.due < today && !["completed", "skipped"].includes(t.status),
+    (task) =>
+      task.due &&
+      task.due < today &&
+      !["completed", "skipped"].includes(task.status),
   ).length;
-  const counted = tasks.filter((t) => t.status !== "skipped");
+  const counted = tasks.filter((task) => task.status !== "skipped");
   const taskRate = counted.length
     ? Math.round((100 * count("completed")) / counted.length)
     : 0;
@@ -54,12 +60,14 @@ export default function Statistics() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Statistics</h1>
-          <p className="text-sm text-muted">
-            Numbers to help you adjust, not to judge you.
-          </p>
+          <h1 className="text-2xl font-semibold">{t("nav.stats")}</h1>
+          <p className="text-sm text-muted">{t("stats.subtitle")}</p>
         </div>
-        <div className="flex gap-2" role="group" aria-label="Period">
+        <div
+          className="flex gap-2"
+          role="group"
+          aria-label={t("stats.periodLabel")}
+        >
           {RANGES.map((r) => (
             <button
               key={r.days}
@@ -71,7 +79,7 @@ export default function Statistics() {
                   : "border-line text-muted"
               }`}
             >
-              {r.label}
+              {t(r.labelKey)}
             </button>
           ))}
         </div>
@@ -79,27 +87,29 @@ export default function Statistics() {
 
       <Card className="grid gap-6 md:grid-cols-3">
         <div>
-          <h2 className="font-semibold">Productivity score</h2>
-          <p className="mt-2 text-5xl font-semibold">{score}</p>
-          <p className="mt-2 text-sm text-muted">
-            A snapshot of this period, built from the five parts on the right.
-            It is not a grade.
+          <h2 className="font-semibold">{t("stats.score")}</h2>
+          <p className="mt-2 text-5xl font-semibold" dir="ltr">
+            {score}
           </p>
+          <p className="mt-2 text-sm text-muted">{t("stats.scoreText")}</p>
         </div>
         <ul className="space-y-3 md:col-span-2">
           {parts.map((p) => (
-            <li key={p.label} className="space-y-1">
-              <div className="flex justify-between text-sm">
+            <li key={p.key} className="space-y-1">
+              <div className="flex justify-between gap-3 text-sm">
                 <span>
-                  {p.label} <span className="text-muted">· {p.hint}</span>
+                  {t(`stats.part.${p.key}`)}{" "}
+                  <span className="text-muted">
+                    · {t(`stats.hint.${p.key}`)}
+                  </span>
                 </span>
-                <span className="font-medium">
+                <span className="shrink-0 font-medium" dir="ltr">
                   +{p.value} / {p.max}
                 </span>
               </div>
               <Bar
                 value={Math.round((100 * p.value) / p.max)}
-                label={`${p.label} score`}
+                label={t("stats.partScore", { part: t(`stats.part.${p.key}`) })}
               />
             </li>
           ))}
@@ -108,34 +118,34 @@ export default function Statistics() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="space-y-4">
-          <h2 className="font-semibold">Tasks</h2>
+          <h2 className="font-semibold">{t("nav.tasks")}</h2>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="Completed" value={count("completed")} />
-            <Stat label="In progress" value={count("in_progress")} />
-            <Stat label="Todo" value={count("todo")} />
-            <Stat label="Skipped" value={count("skipped")} />
-            <Stat label="Overdue" value={overdue} />
-            <Stat label="Completion rate" value={`${taskRate}%`} />
+            <Stat label={t("status.completed")} value={count("completed")} />
+            <Stat
+              label={t("status.in_progress")}
+              value={count("in_progress")}
+            />
+            <Stat label={t("status.todo")} value={count("todo")} />
+            <Stat label={t("status.skipped")} value={count("skipped")} />
+            <Stat label={t("stats.overdue")} value={overdue} />
+            <Stat label={t("stats.completionRate")} value={`${taskRate}%`} />
           </div>
         </Card>
 
         <Card className="space-y-4">
-          <h2 className="font-semibold">Time</h2>
+          <h2 className="font-semibold">{t("stats.time")}</h2>
           <div className="grid grid-cols-3 gap-3 text-center">
-            <Stat label="Total tracked" value={fmt(total)} />
-            <Stat label="Focus" value={fmt(focus)} />
-            <Stat label="Entertainment" value={fmt(entertainment)} />
+            <Stat label={t("stats.totalTracked")} value={fmt(total)} />
+            <Stat label={t("stats.focus")} value={fmt(focus)} />
+            <Stat label={tc("Entertainment")} value={fmt(entertainment)} />
           </div>
         </Card>
       </div>
 
       <Card className="space-y-4">
-        <h2 className="font-semibold">Focus time by day</h2>
+        <h2 className="font-semibold">{t("stats.focusByDay")}</h2>
         {focus === 0 ? (
-          <Empty
-            title="No focus time in this period"
-            text="Track a session to see it here."
-          />
+          <Empty title={t("stats.noFocus")} text={t("stats.noFocusText")} />
         ) : (
           <>
             <div className="flex h-40 items-end gap-1" role="list">
@@ -158,11 +168,11 @@ export default function Statistics() {
             </div>
             <div className="flex justify-between text-xs text-muted">
               {days === 7 ? (
-                chart.map((c) => <span key={c.date}>{dayName(c.date)}</span>)
+                chart.map((c) => <span key={c.date}>{shortDay(c.date)}</span>)
               ) : (
                 <>
-                  <span>{chart[0].date}</span>
-                  <span>{chart[chart.length - 1].date}</span>
+                  <span dir="ltr">{chart[0].date}</span>
+                  <span dir="ltr">{chart[chart.length - 1].date}</span>
                 </>
               )}
             </div>
@@ -171,12 +181,9 @@ export default function Statistics() {
       </Card>
 
       <Card className="space-y-4">
-        <h2 className="font-semibold">Habits</h2>
+        <h2 className="font-semibold">{t("nav.habits")}</h2>
         {habits.length === 0 ? (
-          <Empty
-            title="No habits yet"
-            text="Add a habit to see how consistent you are."
-          />
+          <Empty title={t("habits.empty")} text={t("stats.noHabitsText")} />
         ) : (
           <ul className="space-y-4">
             {habits.map((h) => {
@@ -187,10 +194,17 @@ export default function Statistics() {
                   <div className="flex flex-wrap justify-between gap-2 text-sm">
                     <span>{h.name}</span>
                     <span className="text-muted">
-                      {r}% · current {current}d · best {best}d
+                      {t("stats.habitRow", {
+                        rate: r,
+                        current: t("common.daysShort", { n: current }),
+                        best: t("common.daysShort", { n: best }),
+                      })}
                     </span>
                   </div>
-                  <Bar value={r} label={`${h.name} completion`} />
+                  <Bar
+                    value={r}
+                    label={t("common.progressOf", { title: h.name })}
+                  />
                 </li>
               );
             })}

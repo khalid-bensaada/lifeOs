@@ -1,32 +1,34 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Bar, Badge, fieldCls, btnCls } from "../components/ui";
 
-const STATUS = {
-  idea: "Idea",
-  planning: "Planning",
-  in_progress: "In progress",
-  paused: "Paused",
-  completed: "Completed",
-  archived: "Archived",
-};
+const STATUSES = [
+  "idea",
+  "planning",
+  "in_progress",
+  "paused",
+  "completed",
+  "archived",
+];
 
 const progressOf = (list) => {
-  const counted = list.filter((t) => t.status !== "skipped");
+  const counted = list.filter((task) => task.status !== "skipped");
   if (!counted.length) return 0;
   return Math.round(
-    (100 * counted.filter((t) => t.status === "completed").length) /
+    (100 * counted.filter((task) => task.status === "completed").length) /
       counted.length,
   );
 };
 
 function ProjectCard({ p }) {
+  const { t } = useT();
   const { tasks, goals, updateProject, removeProject, addTask, updateTask } =
     useApp();
   const [title, setTitle] = useState("");
-  const mine = tasks.filter((t) => t.projectId === p.id);
-  const done = mine.filter((t) => t.status === "completed").length;
+  const mine = tasks.filter((task) => task.projectId === p.id);
+  const done = mine.filter((task) => task.status === "completed").length;
   const goal = goals.find((g) => String(g.id) === String(p.goalId));
 
   const submit = async (e) => {
@@ -47,7 +49,7 @@ function ProjectCard({ p }) {
         <h3 className="font-semibold">{p.title}</h3>
         <button
           onClick={() => removeProject(p.id)}
-          aria-label={`Delete ${p.title}`}
+          aria-label={t("common.deleteItem", { title: p.title })}
           className="text-muted hover:text-ink"
         >
           <Trash2 size={16} />
@@ -56,55 +58,65 @@ function ProjectCard({ p }) {
 
       <div className="flex flex-wrap gap-1.5">
         {p.tech && <Badge>{p.tech}</Badge>}
-        {goal && <Badge>Goal: {goal.title}</Badge>}
-        {p.deadline && <Badge>Due {p.deadline}</Badge>}
+        {goal && (
+          <Badge>{t("projects.goalBadge", { title: goal.title })}</Badge>
+        )}
+        {p.deadline && <Badge>{t("goals.due", { date: p.deadline })}</Badge>}
       </div>
 
       {mine.length === 0 ? (
-        <p className="text-xs text-muted">No tasks yet</p>
+        <p className="text-xs text-muted">{t("projects.noTasks")}</p>
       ) : (
         <div className="space-y-1">
-          <Bar value={progressOf(mine)} label={`${p.title} progress`} />
+          <Bar
+            value={progressOf(mine)}
+            label={t("common.progressOf", { title: p.title })}
+          />
           <p className="text-xs text-muted">
-            {done} / {mine.length} tasks · {progressOf(mine)}%
+            {t("projects.tasksProgress", {
+              done,
+              total: mine.length,
+              pct: progressOf(mine),
+            })}
           </p>
         </div>
       )}
 
       <select
-        aria-label={`Status of ${p.title}`}
+        aria-label={t("projects.statusOf", { title: p.title })}
         value={p.status}
         onChange={(e) => updateProject(p.id, { status: e.target.value })}
         className={`${fieldCls} w-full !py-1.5`}
       >
-        {Object.entries(STATUS).map(([k, v]) => (
-          <option key={k} value={k}>
-            {v}
+        {STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {t(`projectStatus.${s}`)}
           </option>
         ))}
       </select>
 
       {mine.length > 0 && (
         <ul className="space-y-1">
-          {mine.map((t) => (
-            <li key={t.id}>
+          {mine.map((task) => (
+            <li key={task.id}>
               <label className="flex cursor-pointer items-center gap-2 text-sm">
                 <input
                   type="checkbox"
-                  checked={t.status === "completed"}
+                  checked={task.status === "completed"}
                   onChange={() =>
-                    updateTask(t.id, {
-                      status: t.status === "completed" ? "todo" : "completed",
+                    updateTask(task.id, {
+                      status:
+                        task.status === "completed" ? "todo" : "completed",
                     })
                   }
                   className="size-4 accent-[var(--accent)]"
                 />
                 <span
                   className={
-                    t.status === "completed" ? "text-muted line-through" : ""
+                    task.status === "completed" ? "text-muted line-through" : ""
                   }
                 >
-                  {t.title}
+                  {task.title}
                 </span>
               </label>
             </li>
@@ -114,13 +126,16 @@ function ProjectCard({ p }) {
 
       <form onSubmit={submit} className="flex gap-2">
         <input
-          aria-label={`New task for ${p.title}`}
+          aria-label={t("projects.newTaskFor", { title: p.title })}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Add a task"
+          placeholder={t("projects.addTaskPlaceholder")}
           className={`${fieldCls} min-w-0 flex-1 !py-1.5`}
         />
-        <button className={btnCls} aria-label={`Add task to ${p.title}`}>
+        <button
+          className={btnCls}
+          aria-label={t("projects.addTaskTo", { title: p.title })}
+        >
           <Plus size={16} aria-hidden="true" />
         </button>
       </form>
@@ -129,6 +144,7 @@ function ProjectCard({ p }) {
 }
 
 export default function Projects() {
+  const { t } = useT();
   const { projects, projectsStatus, loadProjects, goals, addProject } =
     useApp();
   const [title, setTitle] = useState("");
@@ -156,35 +172,32 @@ export default function Projects() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="text-2xl font-semibold">Projects</h1>
-        <p className="text-sm text-muted">
-          Progress comes from each project&apos;s completed tasks. Move a
-          project between columns with its status menu.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("nav.projects")}</h1>
+        <p className="text-sm text-muted">{t("projects.subtitle")}</p>
       </header>
 
       <form onSubmit={submit} className="flex flex-wrap gap-2">
         <input
-          aria-label="Project name"
+          aria-label={t("projects.nameLabel")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="What do you want to build?"
+          placeholder={t("projects.placeholder")}
           className={`${fieldCls} min-w-0 flex-1`}
         />
         <input
-          aria-label="Technology"
+          aria-label={t("projects.techLabel")}
           value={tech}
           onChange={(e) => setTech(e.target.value)}
-          placeholder="Technology"
+          placeholder={t("projects.techLabel")}
           className={`${fieldCls} w-40`}
         />
         <select
-          aria-label="Goal"
+          aria-label={t("projects.goalLabel")}
           value={goalId}
           onChange={(e) => setGoalId(e.target.value)}
           className={fieldCls}
         >
-          <option value="">No goal</option>
+          <option value="">{t("projects.noGoal")}</option>
           {goals.map((g) => (
             <option key={g.id} value={g.id}>
               {g.title}
@@ -192,7 +205,7 @@ export default function Projects() {
           ))}
         </select>
         <input
-          aria-label="Deadline"
+          aria-label={t("common.deadline")}
           type="date"
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
@@ -200,7 +213,7 @@ export default function Projects() {
         />
         <button className={btnCls}>
           <Plus size={16} aria-hidden="true" />
-          Add project
+          {t("projects.addProject")}
         </button>
       </form>
 
@@ -217,33 +230,31 @@ export default function Projects() {
 
       {projectsStatus === "error" && (
         <div className="rounded-xl border border-dashed border-line p-10 text-center">
-          <p className="font-medium">Something went wrong.</p>
-          <p className="mt-1 text-sm text-muted">
-            We couldn&apos;t load your projects.
-          </p>
+          <p className="font-medium">{t("common.somethingWrong")}</p>
+          <p className="mt-1 text-sm text-muted">{t("projects.loadError")}</p>
           <button onClick={loadProjects} className={`${btnCls} mt-4`}>
-            Try again
+            {t("common.tryAgain")}
           </button>
         </div>
       )}
 
       {projectsStatus === "ready" && (
         <div className="flex items-start gap-4 overflow-x-auto pb-3">
-          {Object.entries(STATUS).map(([key, label]) => {
+          {STATUSES.map((key) => {
             const list = projects.filter((p) => p.status === key);
             return (
               <section
                 key={key}
-                aria-label={label}
+                aria-label={t(`projectStatus.${key}`)}
                 className="w-72 shrink-0 space-y-3"
               >
                 <h2 className="flex items-center justify-between px-1 text-sm font-semibold">
-                  {label}
+                  {t(`projectStatus.${key}`)}
                   <span className="font-normal text-muted">{list.length}</span>
                 </h2>
                 {list.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-line p-4 text-center text-xs text-muted">
-                    No projects
+                    {t("projects.noProjects")}
                   </p>
                 ) : (
                   list.map((p) => <ProjectCard key={p.id} p={p} />)

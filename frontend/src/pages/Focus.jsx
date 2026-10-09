@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Pause, Play, Square } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { useT } from "../i18n/useT";
 import { Card, Badge, fieldCls, btnCls } from "../components/ui";
 import { clock, elapsedMs, fmt } from "../utils/time";
 
@@ -17,6 +18,7 @@ const CATEGORIES = [
 ];
 
 function ErrorBar() {
+  const { t } = useT();
   const { taskError, clearTaskError } = useApp();
   if (!taskError) return null;
   return (
@@ -27,7 +29,7 @@ function ErrorBar() {
       <span>{taskError}</span>
       <button
         onClick={clearTaskError}
-        aria-label="Dismiss"
+        aria-label={t("layout.dismiss")}
         className="text-muted hover:text-ink"
       >
         ×
@@ -37,6 +39,7 @@ function ErrorBar() {
 }
 
 function Setup() {
+  const { t, tc } = useT();
   const { tasks, tasksStatus, loadTasks, startTimer } = useApp();
   const [params] = useSearchParams();
   const [taskId, setTaskId] = useState(params.get("task") || "");
@@ -44,14 +47,14 @@ function Setup() {
   const [category, setCategory] = useState("Programming");
 
   const open = tasks
-    .filter((t) => !["completed", "skipped"].includes(t.status))
+    .filter((task) => !["completed", "skipped"].includes(task.status))
     .sort((a, b) => Number(b.today) - Number(a.today));
-  const selected = open.find((t) => String(t.id) === taskId);
+  const selected = open.find((task) => String(task.id) === taskId);
 
   const submit = (e) => {
     e.preventDefault();
     startTimer({
-      title: selected ? selected.title : title.trim() || category,
+      title: selected ? selected.title : title.trim() || tc(category),
       category,
       projectId: selected?.projectId ?? null,
       taskId: selected ? selected.id : null,
@@ -61,34 +64,32 @@ function Setup() {
   return (
     <Card className="w-full max-w-lg space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">Focus mode</h1>
-        <p className="text-sm text-muted">
-          One thing at a time. Pick what you will work on.
-        </p>
+        <h1 className="text-2xl font-semibold">{t("time.focusMode")}</h1>
+        <p className="text-sm text-muted">{t("focus.setupSub")}</p>
       </div>
 
       {tasksStatus === "error" && (
         <p className="text-sm">
-          We couldn&apos;t load your tasks.{" "}
+          {t("tasks.loadError")}{" "}
           <button onClick={loadTasks} className="text-accent hover:underline">
-            Try again
+            {t("common.tryAgain")}
           </button>
         </p>
       )}
 
       <form onSubmit={submit} className="space-y-4">
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium">Task</span>
+          <span className="text-sm font-medium">{t("focus.task")}</span>
           <select
             value={selected ? taskId : ""}
             onChange={(e) => setTaskId(e.target.value)}
             className={`${fieldCls} w-full`}
           >
-            <option value="">No task</option>
-            {open.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.today ? "★ " : ""}
-                {t.title}
+            <option value="">{t("focus.noTask")}</option>
+            {open.map((task) => (
+              <option key={task.id} value={task.id}>
+                {task.today ? "★ " : ""}
+                {task.title}
               </option>
             ))}
           </select>
@@ -96,32 +97,34 @@ function Setup() {
 
         {!selected && (
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">What will you work on?</span>
+            <span className="text-sm font-medium">{t("focus.whatWork")}</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Build the focus page"
+              placeholder={t("focus.workPlaceholder")}
               className={`${fieldCls} w-full`}
             />
           </label>
         )}
 
         <label className="block space-y-1.5">
-          <span className="text-sm font-medium">Category</span>
+          <span className="text-sm font-medium">{t("common.category")}</span>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
             className={`${fieldCls} w-full`}
           >
             {CATEGORIES.map((c) => (
-              <option key={c}>{c}</option>
+              <option key={c} value={c}>
+                {tc(c)}
+              </option>
             ))}
           </select>
         </label>
 
         <button className={`${btnCls} w-full justify-center`}>
           <Play size={16} aria-hidden="true" />
-          Start focus
+          {t("focus.start")}
         </button>
       </form>
 
@@ -129,13 +132,14 @@ function Setup() {
         to="/today"
         className="block text-center text-sm text-muted hover:text-ink"
       >
-        Back to today
+        {t("focus.backToday")}
       </Link>
     </Card>
   );
 }
 
 function Running() {
+  const { t, tc } = useT();
   const { active, tasks, pauseTimer, resumeTimer, stopTimer, discardTimer } =
     useApp();
   const navigate = useNavigate();
@@ -155,7 +159,7 @@ function Running() {
   }, [paused]);
 
   const elapsed = Math.max(0, Math.floor(elapsedMs(active, now) / 1000));
-  const task = active.taskId ? tasks.find((t) => t.id === active.taskId) : null;
+  const task = active.taskId ? tasks.find((x) => x.id === active.taskId) : null;
   const canComplete = task && task.status !== "completed";
 
   const finish = () => {
@@ -172,7 +176,7 @@ function Running() {
   };
 
   const discard = () => {
-    if (window.confirm("Discard this session? The time will not be saved.")) {
+    if (window.confirm(t("focus.discardConfirm"))) {
       discardTimer();
       navigate("/today");
     }
@@ -182,19 +186,15 @@ function Running() {
     return (
       <Card className="w-full max-w-lg space-y-5">
         <div>
-          <h1 className="text-2xl font-semibold">Session completed</h1>
+          <h1 className="text-2xl font-semibold">{t("focus.completed")}</h1>
           <p className="text-sm text-muted">
-            Focus time:{" "}
-            <span className="font-medium text-ink">{fmt(elapsed)}</span> on{" "}
-            {active.title}
+            {t("focus.summary", { time: fmt(elapsed), title: active.title })}
           </p>
         </div>
 
         <form onSubmit={save} className="space-y-4">
           <label className="block space-y-1.5">
-            <span className="text-sm font-medium">
-              What did you accomplish?
-            </span>
+            <span className="text-sm font-medium">{t("focus.accomplish")}</span>
             <textarea
               rows={4}
               value={note}
@@ -211,7 +211,7 @@ function Running() {
                 onChange={(e) => setComplete(e.target.checked)}
                 className="size-4 accent-[var(--accent)]"
               />
-              Mark this task as completed
+              {t("focus.markComplete")}
             </label>
           )}
 
@@ -222,21 +222,21 @@ function Running() {
               disabled={saving}
               className={`${btnCls} disabled:opacity-60`}
             >
-              {saving ? "Saving..." : "Save session"}
+              {saving ? t("common.saving") : t("focus.saveSession")}
             </button>
             <button
               type="button"
               onClick={() => setFinishing(false)}
               className="text-sm text-muted hover:text-ink"
             >
-              Back to timer
+              {t("focus.backTimer")}
             </button>
             <button
               type="button"
               onClick={discard}
               className="ms-auto text-sm text-muted hover:text-ink"
             >
-              Discard
+              {t("focus.discard")}
             </button>
           </div>
         </form>
@@ -247,17 +247,19 @@ function Running() {
   return (
     <div className="w-full max-w-lg space-y-8 text-center">
       <div className="space-y-2">
-        <p className="text-sm uppercase tracking-wide text-muted">Focus mode</p>
+        <p className="text-sm uppercase tracking-wide text-muted">
+          {t("time.focusMode")}
+        </p>
         <h1 className="text-2xl font-semibold">{active.title}</h1>
-        <Badge>{active.category}</Badge>
+        <Badge>{tc(active.category)}</Badge>
       </div>
 
-      <p className="text-7xl font-semibold tabular-nums sm:text-8xl">
+      <p className="text-7xl font-semibold tabular-nums sm:text-8xl" dir="ltr">
         {clock(elapsed)}
       </p>
 
       <p role="status" className="h-5 text-sm text-muted">
-        {paused ? "Paused" : ""}
+        {paused ? t("time.paused") : ""}
       </p>
 
       <ErrorBar />
@@ -266,7 +268,7 @@ function Running() {
         {paused ? (
           <button onClick={resumeTimer} className={btnCls}>
             <Play size={16} aria-hidden="true" />
-            Resume
+            {t("time.resume")}
           </button>
         ) : (
           <button
@@ -274,12 +276,12 @@ function Running() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3.5 py-2 text-sm font-medium"
           >
             <Pause size={16} aria-hidden="true" />
-            Pause
+            {t("time.pause")}
           </button>
         )}
         <button onClick={finish} className={btnCls}>
           <Square size={16} aria-hidden="true" />
-          Finish
+          {t("focus.finish")}
         </button>
       </div>
 
@@ -287,7 +289,7 @@ function Running() {
         to="/today"
         className="inline-block text-sm text-muted hover:text-ink"
       >
-        Leave focus view (the timer keeps running)
+        {t("focus.leave")}
       </Link>
     </div>
   );
