@@ -15,3 +15,11 @@ export const translate = (language, key, params) => {
     name in params ? String(params[name]) : match,
   );
 };
+
+let current = "en";
+
+export const setCurrentLanguage = (language) => {
+  current = MESSAGES[language] ? language : "en";
+};
+
+export const tr = (key, params) => translate(current, key, params);

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useAuth } from "./AuthContext";
 import { setDurationLanguage } from "../utils/time";
+import { setCurrentLanguage } from "../i18n";
 import * as settingsApi from "../services/settings";
 
 const Ctx = createContext(null);
@@ -46,6 +47,7 @@ export function SettingsProvider({ children }) {
   const [systemDark, setSystemDark] = useState(() => darkQuery().matches);
 
   setDurationLanguage(settings.language);
+  setCurrentLanguage(settings.language);
 
   useEffect(() => {
     const media = darkQuery();

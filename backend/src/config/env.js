@@ -15,6 +15,12 @@ export const env = {
   clientUrls: (process.env.CLIENT_URL || "http://localhost:5173")
     .split(",")
     .map((s) => s.trim()),
+  trustProxy: Number(process.env.TRUST_PROXY) || 0,
+  limits: {
+    api: Number(process.env.RATE_API_MAX) || 1500,
+    login: Number(process.env.RATE_LOGIN_MAX) || 10,
+    register: Number(process.env.RATE_REGISTER_MAX) || 5,
+  },
   jwt: {
     secret: process.env.JWT_SECRET,
     expiresInSec: 7 * 24 * 60 * 60,

@@ -22,6 +22,10 @@ const checkLimit = async (userId) => {
     throw new ApiError(
       400,
       `Today is limited to ${limit} priorities. Remove one first.`,
+      {
+        code: "taskLimit",
+        params: { n: limit },
+      },
     );
   }
 };

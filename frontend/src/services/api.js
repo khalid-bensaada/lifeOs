@@ -1,4 +1,14 @@
-const BASE = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+import { MESSAGES, tr } from "../i18n";
+
+const BASE =
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.PROD ? "/api" : "http://localhost:4000/api");
+
+const messageOf = (error) => {
+  const key = error?.code ? `error.${error.code}` : null;
+  if (key && MESSAGES.en[key]) return tr(key, error.params);
+  return error?.message || tr("error.generic");
+};
 
 export async function api(path, { method = "GET", body } = {}) {
   let res;
@@ -10,17 +20,13 @@ export async function api(path, { method = "GET", body } = {}) {
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch {
-    throw new Error(
-      "We can't reach the server. Check your connection and try again.",
-    );
+    throw new Error(tr("error.network"));
   }
 
   const json = await res.json().catch(() => null);
 
   if (!res.ok || !json?.success) {
-    throw new Error(
-      json?.error?.message || "Something went wrong. Please try again.",
-    );
+    throw new Error(messageOf(json?.error));
   }
   return json.data;
 }

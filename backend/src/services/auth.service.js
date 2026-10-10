@@ -4,12 +4,17 @@ import { env } from "../config/env.js";
 import { ApiError } from "../utils/ApiError.js";
 import * as users from "../repositories/user.repository.js";
 
+const ALGORITHM = "HS256";
+const DUMMY_HASH = bcrypt.hashSync("lifeos-dummy-password", 12);
+
 const signToken = (userId) =>
   jwt.sign({ sub: String(userId) }, env.jwt.secret, {
+    algorithm: ALGORITHM,
     expiresIn: env.jwt.expiresInSec,
   });
 
-export const verifyToken = (token) => jwt.verify(token, env.jwt.secret);
+export const verifyToken = (token) =>
+  jwt.verify(token, env.jwt.secret, { algorithms: [ALGORITHM] });
 
 export const register = async ({ name, email, password }) => {
   if (await users.findByEmail(email)) {
@@ -28,8 +33,11 @@ export const register = async ({ name, email, password }) => {
 
 export const login = async ({ email, password }) => {
   const row = await users.findByEmail(email);
-  const ok = row && (await bcrypt.compare(password, row.password_hash));
-  if (!ok) throw new ApiError(401, "Invalid email or password");
+  const ok = await bcrypt.compare(
+    password,
+    row ? row.password_hash : DUMMY_HASH,
+  );
+  if (!row || !ok) throw new ApiError(401, "Invalid email or password");
   return {
     user: { id: row.id, name: row.name, email: row.email },
     token: signToken(row.id),

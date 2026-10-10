@@ -1,0 +1,12 @@
+{
+  "name": "lifeos",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "npm --prefix frontend install --include=dev && npm --prefix frontend run build && npm --prefix backend install --omit=dev",
+    "start": "npm --prefix backend start"
+  }
+}
